@@ -1,5 +1,6 @@
 ## areas_tbl
 This defines the priority areas for biodiversity. There are 50 areas in total. This table will be joined to the (LNRS Priority Areas for Biodiversity — WECA-open-data (opendatasoft.com). The dataset currently has 111 records because multiple polygons have a common ID. The area_id field joins to id on the published dataset.
+
 ## species_tbl
 We have defined 39 species of importance in the context of the LNRS, listed in the species_tbl, which also contains data about the species derived from the GBIF. Species are related to areas and priorities. So multiple species are important for a given area and (potentially different) species are important for different priorities. Species are related to areas and priorities through the relevant lookup tables.
 ## priorities_tbl
