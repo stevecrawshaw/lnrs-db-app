@@ -1031,17 +1031,16 @@ except Exception as e:
 - Implement view for source_table_recreated_vw (verify row count matches source_table)
 - Implement view for apmg_slim_vw
 - Add export to CSV functionality
+- Add export to json functionality
 - Create custom reports:
   - Measures by area
   - Measures by priority
   - Species by area
   - Grant funding by area/priority
-- Add data visualization (charts/graphs using Streamlit)
 
 **Deliverables**:
 - Report pages functional
 - Export working
-- Data visualizations added
 
 ---
 
