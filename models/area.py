@@ -28,19 +28,25 @@ class AreaModel(BaseModel):
                 a.area_name,
                 a.area_description,
                 a.area_link,
-                COUNT(DISTINCT map.measure_id) as measures,
-                COUNT(DISTINCT map.priority_id) as priorities,
-                COUNT(DISTINCT sap.species_id) as species,
-                COUNT(DISTINCT hca.habitat_id) as creation_habitats,
-                COUNT(DISTINCT hma.habitat_id) as management_habitats,
-                COUNT(DISTINCT afs.id) as funding_schemes
+                (SELECT COUNT(DISTINCT measure_id)
+                 FROM measure_area_priority
+                 WHERE area_id = a.area_id) as measures,
+                (SELECT COUNT(DISTINCT priority_id)
+                 FROM measure_area_priority
+                 WHERE area_id = a.area_id) as priorities,
+                (SELECT COUNT(DISTINCT species_id)
+                 FROM species_area_priority
+                 WHERE area_id = a.area_id) as species,
+                (SELECT COUNT(DISTINCT habitat_id)
+                 FROM habitat_creation_area
+                 WHERE area_id = a.area_id) as creation_habitats,
+                (SELECT COUNT(DISTINCT habitat_id)
+                 FROM habitat_management_area
+                 WHERE area_id = a.area_id) as management_habitats,
+                (SELECT COUNT(*)
+                 FROM area_funding_schemes
+                 WHERE area_id = a.area_id) as funding_schemes
             FROM area a
-            LEFT JOIN measure_area_priority map ON a.area_id = map.area_id
-            LEFT JOIN species_area_priority sap ON a.area_id = sap.area_id
-            LEFT JOIN habitat_creation_area hca ON a.area_id = hca.area_id
-            LEFT JOIN habitat_management_area hma ON a.area_id = hma.area_id
-            LEFT JOIN area_funding_schemes afs ON a.area_id = afs.area_id
-            GROUP BY a.area_id, a.area_name, a.area_description, a.area_link
             ORDER BY a.area_name
         """
 
@@ -110,7 +116,7 @@ class AreaModel(BaseModel):
                 s.common_name,
                 s.linnaean_name,
                 s.assemblage,
-                s.gbif_taxon_key
+                s.usage_key
             FROM species s
             JOIN species_area_priority sap ON s.species_id = sap.species_id
             WHERE sap.area_id = ?
