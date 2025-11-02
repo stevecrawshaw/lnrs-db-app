@@ -2,9 +2,10 @@
 
 **Goal**: Implement full CRUD operations for all entities
 **Duration**: Week 3
-**Status**: 🔄 In Progress (Phase 3A Complete)
+**Status**: 🔄 In Progress (Phase 3A Complete, Phase 3B Mostly Complete)
 **Started**: 2025-11-02
 **Phase 3A Completed**: 2025-11-02
+**Phase 3B Progress**: 2025-11-02 (Species & Areas Complete)
 
 ---
 
@@ -16,9 +17,10 @@
 - [x] Add form validation for all inputs (Phase 3A)
 - [x] Implement error handling and user feedback (Phase 3A)
 - [x] Add confirmation dialogs for destructive operations (Phase 3A)
-- [ ] Implement CREATE operations for complex entities (Phase 3B)
-- [ ] Implement UPDATE operations for complex entities (Phase 3B)
-- [ ] Implement DELETE operations for complex entities (Phase 3B)
+- [x] Implement CREATE operations for complex entities (Phase 3B) - Species & Areas ✅
+- [x] Implement UPDATE operations for complex entities (Phase 3B) - Species & Areas ✅
+- [x] Implement DELETE operations for complex entities (Phase 3B) - Species & Areas ✅
+- [ ] Implement Measures CRUD (Phase 3B final entity)
 
 ---
 
@@ -58,13 +60,19 @@
   - Validation for required fields
   - Location: `ui/pages/grants.py:52-132`
 
-- [ ] **Species** - Create new species entry
+- [x] **Species** - Create new species entry ✅ PHASE 3B COMPLETE
   - Form fields: common_name, linnaean_name, assemblage, taxa, scientific_name
-  - Optional: GBIF integration for taxonomy lookup
+  - Optional taxonomy fields: kingdom, phylum, class, order, family, genus
+  - Auto-incrementing species_id
+  - Validation for required fields
+  - Location: `ui/pages/species.py:32-123`
 
-- [ ] **Areas** - Create new priority area
+- [x] **Areas** - Create new priority area ✅ PHASE 3B COMPLETE
   - Form fields: area_name, area_description, area_link
-  - Optional: Link to funding schemes
+  - Auto-incrementing area_id
+  - URL validation for area_link
+  - Validation for required fields
+  - Location: `ui/pages/areas.py:53-117`
 
 #### Complex Entities (Many-to-many relationships)
 - [ ] **Measures** - Create new measure
@@ -92,15 +100,19 @@
   - Form pre-populated with existing data
   - Location: `ui/pages/habitats.py:74-115`
 
-#### Phase 3B - Pending
+#### Phase 3B - ✅ Species & Areas COMPLETE
 
-- [ ] **Areas** - Edit existing area
-  - Update basic fields
-  - Update funding schemes
+- [x] **Areas** - Edit existing area ✅
+  - Update area_name, area_description, area_link
+  - URL validation (same as CREATE)
+  - Form pre-populated with existing data
+  - Location: `ui/pages/areas.py:120-183`
 
-- [ ] **Species** - Edit existing species
-  - Update taxonomy fields
-  - Validate scientific names
+- [x] **Species** - Edit existing species ✅
+  - Update common_name, scientific_name, assemblage, taxa
+  - Update taxonomy fields (kingdom through genus)
+  - Form pre-populated with existing data
+  - Location: `ui/pages/species.py:126-220`
 
 - [ ] **Measures** - Edit existing measure
   - Update basic fields
@@ -139,10 +151,10 @@
   - Model method: `models/habitat.py:104-137`
   - UI: `ui/pages/habitats.py:118-154`
 
-#### Phase 3B - Pending
+#### Phase 3B - ✅ Species & Areas COMPLETE
 
-- [ ] **Areas** - Delete with cascade
-  - Cascade order:
+- [x] **Areas** - Delete with cascade ✅
+  - Cascade order (from CLAUDE.md):
     1. Delete from `measure_area_priority_grant` where area_id matches
     2. Delete from `measure_area_priority` where area_id matches
     3. Delete from `species_area_priority` where area_id matches
@@ -150,14 +162,19 @@
     5. Delete from `habitat_creation_area` where area_id matches
     6. Delete from `habitat_management_area` where area_id matches
     7. Finally delete from `area`
-  - Confirmation dialog showing all relationships
+  - Model method: `models/area.py:220-273`
+  - UI: `ui/pages/areas.py:186-224`
+  - Confirmation dialog showing relationship impact
+  - **6-table cascade delete** - most complex after measures!
 
-- [ ] **Species** - Delete with cascade
-  - Cascade order:
+- [x] **Species** - Delete with cascade ✅
+  - Cascade order (from CLAUDE.md):
     1. Delete from `species_area_priority` where species_id matches
     2. Delete from `measure_has_species` where species_id matches
     3. Finally delete from `species`
-  - Confirmation dialog
+  - Model method: `models/species.py:109-142`
+  - UI: `ui/pages/species.py:223-261`
+  - Confirmation dialog showing relationship impact
 
 - [ ] **Measures** - Delete with cascade
   - Cascade order:

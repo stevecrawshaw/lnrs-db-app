@@ -217,6 +217,61 @@ class AreaModel(BaseModel):
             "funding_schemes": len(funding_schemes),
         }
 
+    def delete_with_cascade(self, area_id: int) -> bool:
+        """Delete an area and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from measure_area_priority_grant where area_id matches
+        2. Delete from measure_area_priority where area_id matches
+        3. Delete from species_area_priority where area_id matches
+        4. Delete from area_funding_schemes where area_id matches
+        5. Delete from habitat_creation_area where area_id matches
+        6. Delete from habitat_management_area where area_id matches
+        7. Finally delete from area
+
+        Args:
+            area_id: ID of the area to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from measure_area_priority_grant
+            query1 = "DELETE FROM measure_area_priority_grant WHERE area_id = ?"
+            self.execute_raw_query(query1, [area_id])
+
+            # Step 2: Delete from measure_area_priority
+            query2 = "DELETE FROM measure_area_priority WHERE area_id = ?"
+            self.execute_raw_query(query2, [area_id])
+
+            # Step 3: Delete from species_area_priority
+            query3 = "DELETE FROM species_area_priority WHERE area_id = ?"
+            self.execute_raw_query(query3, [area_id])
+
+            # Step 4: Delete from area_funding_schemes
+            query4 = "DELETE FROM area_funding_schemes WHERE area_id = ?"
+            self.execute_raw_query(query4, [area_id])
+
+            # Step 5: Delete from habitat_creation_area
+            query5 = "DELETE FROM habitat_creation_area WHERE area_id = ?"
+            self.execute_raw_query(query5, [area_id])
+
+            # Step 6: Delete from habitat_management_area
+            query6 = "DELETE FROM habitat_management_area WHERE area_id = ?"
+            self.execute_raw_query(query6, [area_id])
+
+            # Step 7: Delete from area
+            query7 = "DELETE FROM area WHERE area_id = ?"
+            self.execute_raw_query(query7, [area_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting area {area_id} with cascade: {e}")
+            raise
+
 
 # %%
 if __name__ == "__main__":

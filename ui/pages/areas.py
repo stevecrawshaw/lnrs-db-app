@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import polars as pl
 import streamlit as st
@@ -21,11 +22,220 @@ if "area_view" not in st.session_state:
     st.session_state.area_view = "list"
 if "selected_area_id" not in st.session_state:
     st.session_state.selected_area_id = None
+if "show_create_form" not in st.session_state:
+    st.session_state.show_create_form = False
+if "show_edit_form" not in st.session_state:
+    st.session_state.show_edit_form = False
+if "show_delete_confirm" not in st.session_state:
+    st.session_state.show_delete_confirm = False
+
+
+def validate_url(url: str) -> bool:
+    """Validate URL format.
+
+    Args:
+        url: URL string to validate
+
+    Returns:
+        bool: True if URL is valid or empty, False otherwise
+    """
+    if not url or not url.strip():
+        return True  # Empty URLs are allowed
+
+    try:
+        result = urlparse(url.strip())
+        # Check that scheme and netloc are present
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
+
+
+def show_create_form():
+    """Display form to create a new area."""
+    st.subheader("➕ Create New Area")
+
+    with st.form("create_area_form", clear_on_submit=True):
+        area_name = st.text_input(
+            "Area Name*",
+            help="Name of the priority area (required)",
+        )
+
+        area_description = st.text_area(
+            "Area Description*",
+            help="Description of the area and its biodiversity significance (required)",
+            height=150
+        )
+
+        area_link = st.text_input(
+            "Area Link",
+            help="Optional URL to more information about the area",
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Create Area", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_create_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not area_name or not area_name.strip():
+                st.error("❌ Area Name is required")
+                return
+
+            if not area_description or not area_description.strip():
+                st.error("❌ Area Description is required")
+                return
+
+            # Validate URL if provided
+            if area_link and not validate_url(area_link):
+                st.error("❌ Area Link must be a valid URL (e.g., https://example.com)")
+                return
+
+            # Get next area_id
+            max_id = area_model.execute_raw_query("SELECT MAX(area_id) FROM area").fetchone()[0]
+            next_id = (max_id or 0) + 1
+
+            # Create area
+            try:
+                area_model.create({
+                    "area_id": next_id,
+                    "area_name": area_name.strip(),
+                    "area_description": area_description.strip(),
+                    "area_link": area_link.strip() if area_link and area_link.strip() else None,
+                    "bng_hab_mgt": None,
+                    "bng_hab_creation": None,
+                })
+                st.success(f"✅ Successfully created area ID {next_id}!")
+                st.session_state.show_create_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error creating area: {str(e)}")
+
+
+def show_edit_form(area_id: int):
+    """Display form to edit an existing area."""
+    area_data = area_model.get_by_id(area_id)
+
+    if not area_data:
+        st.error("Area not found")
+        return
+
+    st.subheader(f"✏️ Edit Area {area_id}")
+
+    with st.form("edit_area_form"):
+        area_name = st.text_input(
+            "Area Name*",
+            value=area_data['area_name']
+        )
+
+        area_description = st.text_area(
+            "Area Description*",
+            value=area_data['area_description'],
+            height=150
+        )
+
+        area_link = st.text_input(
+            "Area Link",
+            value=area_data.get('area_link', '') or ''
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Update Area", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_edit_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not area_name or not area_name.strip():
+                st.error("❌ Area Name is required")
+                return
+
+            if not area_description or not area_description.strip():
+                st.error("❌ Area Description is required")
+                return
+
+            # Validate URL if provided
+            if area_link and not validate_url(area_link):
+                st.error("❌ Area Link must be a valid URL (e.g., https://example.com)")
+                return
+
+            # Update area
+            try:
+                area_model.update(area_id, {
+                    "area_name": area_name.strip(),
+                    "area_description": area_description.strip(),
+                    "area_link": area_link.strip() if area_link and area_link.strip() else None,
+                })
+                st.success(f"✅ Successfully updated area ID {area_id}!")
+                st.session_state.show_edit_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error updating area: {str(e)}")
+
+
+def show_delete_confirmation(area_id: int):
+    """Show confirmation dialog before deleting."""
+    area_data = area_model.get_by_id(area_id)
+    counts = area_model.get_relationship_counts(area_id)
+
+    st.warning(f"⚠️ Are you sure you want to delete this area?")
+
+    st.markdown(f"**Area:** {area_data['area_name']}")
+    st.markdown(f"**Description:** {area_data['area_description'][:100]}...")
+
+    # Show impact
+    total_relationships = sum(counts.values())
+    if total_relationships > 0:
+        st.error("**This will also delete the following relationships:**")
+        for relationship, count in counts.items():
+            if count > 0:
+                relationship_display = relationship.replace('_', ' ').title()
+                st.write(f"- {count} {relationship_display}")
+        st.write(f"\n**Total relationships to be removed: {total_relationships}**")
+        st.warning("⚠️ **This is a MAJOR deletion!** This area has many relationships. Consider carefully before proceeding.")
+    else:
+        st.info("This area has no relationships and can be safely deleted.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_delete_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Delete Area", type="primary", use_container_width=True):
+            try:
+                area_model.delete_with_cascade(area_id)
+                st.success(f"✅ Successfully deleted area ID {area_id}!")
+                st.session_state.show_delete_confirm = False
+                st.session_state.area_view = "list"
+                st.session_state.selected_area_id = None
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error deleting area: {str(e)}")
 
 
 def show_list_view():
     """Display list of all areas with relationship counts."""
     st.title("🗺️ Priority Areas")
+
+    # Create button
+    if st.button("➕ Create New Area", type="primary"):
+        st.session_state.show_create_form = True
+
+    # Show create form if requested
+    if st.session_state.show_create_form:
+        show_create_form()
+        st.markdown("---")
 
     total_count = area_model.count()
     st.info(f"**{total_count}** priority areas for biodiversity conservation")
@@ -96,13 +306,37 @@ def show_detail_view():
     def back_to_list():
         st.session_state.area_view = "list"
         st.session_state.selected_area_id = None
+        st.session_state.show_edit_form = False
+        st.session_state.show_delete_confirm = False
 
     st.title(f"🗺️ {area_data['area_name']}")
 
-    # Back button
-    if st.button("← Back to List"):
-        back_to_list()
-        st.rerun()
+    # Action buttons
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        if st.button("← Back to List"):
+            back_to_list()
+            st.rerun()
+    with col2:
+        if st.button("✏️ Edit", use_container_width=True):
+            st.session_state.show_edit_form = True
+            st.session_state.show_delete_confirm = False
+    with col3:
+        if st.button("🗑️ Delete", use_container_width=True):
+            st.session_state.show_delete_confirm = True
+            st.session_state.show_edit_form = False
+
+    # Show edit form if requested
+    if st.session_state.show_edit_form:
+        st.markdown("---")
+        show_edit_form(area_id)
+        st.markdown("---")
+
+    # Show delete confirmation if requested
+    if st.session_state.show_delete_confirm:
+        st.markdown("---")
+        show_delete_confirmation(area_id)
+        st.markdown("---")
 
     # Display basic information
     st.subheader("Basic Information")
