@@ -76,3 +76,33 @@ class GrantModel(BaseModel):
         return {
             "measure_area_priority_links": len(measures),
         }
+
+    def delete_with_cascade(self, grant_id: str) -> bool:
+        """Delete a grant and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from measure_area_priority_grant where grant_id matches
+        2. Finally delete from grant_table
+
+        Args:
+            grant_id: ID of the grant to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from measure_area_priority_grant
+            query1 = "DELETE FROM measure_area_priority_grant WHERE grant_id = ?"
+            self.execute_raw_query(query1, [grant_id])
+
+            # Step 2: Delete from grant_table
+            query2 = "DELETE FROM grant_table WHERE grant_id = ?"
+            self.execute_raw_query(query2, [grant_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting grant {grant_id} with cascade: {e}")
+            raise

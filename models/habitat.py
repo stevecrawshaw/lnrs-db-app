@@ -101,6 +101,41 @@ class HabitatModel(BaseModel):
             "management_areas": len(management_areas),
         }
 
+    def delete_with_cascade(self, habitat_id: int) -> bool:
+        """Delete a habitat and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from habitat_creation_area where habitat_id matches
+        2. Delete from habitat_management_area where habitat_id matches
+        3. Finally delete from habitat
+
+        Args:
+            habitat_id: ID of the habitat to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from habitat_creation_area
+            query1 = "DELETE FROM habitat_creation_area WHERE habitat_id = ?"
+            self.execute_raw_query(query1, [habitat_id])
+
+            # Step 2: Delete from habitat_management_area
+            query2 = "DELETE FROM habitat_management_area WHERE habitat_id = ?"
+            self.execute_raw_query(query2, [habitat_id])
+
+            # Step 3: Delete from habitat
+            query3 = "DELETE FROM habitat WHERE habitat_id = ?"
+            self.execute_raw_query(query3, [habitat_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting habitat {habitat_id} with cascade: {e}")
+            raise
+
 
 # %%
 if __name__ == "__main__":

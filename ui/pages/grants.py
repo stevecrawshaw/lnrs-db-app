@@ -1,7 +1,8 @@
-"""Grants page - View grant funding information."""
+"""Grants page - View and manage grant funding information."""
 
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import streamlit as st
 
@@ -20,11 +21,243 @@ if "grant_view" not in st.session_state:
     st.session_state.grant_view = "list"
 if "selected_grant_id" not in st.session_state:
     st.session_state.selected_grant_id = None
+if "show_create_form" not in st.session_state:
+    st.session_state.show_create_form = False
+if "show_edit_form" not in st.session_state:
+    st.session_state.show_edit_form = False
+if "show_delete_confirm" not in st.session_state:
+    st.session_state.show_delete_confirm = False
+
+
+def validate_url(url: str) -> bool:
+    """Validate URL format.
+
+    Args:
+        url: URL string to validate
+
+    Returns:
+        bool: True if URL is valid or empty, False otherwise
+    """
+    if not url or not url.strip():
+        return True  # Empty URLs are allowed
+
+    try:
+        result = urlparse(url.strip())
+        # Check that scheme and netloc are present
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
+
+
+def show_create_form():
+    """Display form to create a new grant."""
+    st.subheader("➕ Create New Grant")
+
+    with st.form("create_grant_form", clear_on_submit=True):
+        grant_id = st.text_input(
+            "Grant ID*",
+            help="Unique identifier for the grant (required)",
+        )
+
+        grant_name = st.text_input(
+            "Grant Name*",
+            help="Name of the grant (required)",
+        )
+
+        grant_scheme = st.text_input(
+            "Grant Scheme*",
+            help="Scheme or program this grant belongs to (required)",
+        )
+
+        url = st.text_input(
+            "URL",
+            help="Optional link to grant information",
+        )
+
+        grant_summary = st.text_area(
+            "Grant Summary",
+            help="Optional summary of the grant",
+            height=100
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Create Grant", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_create_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not grant_id or not grant_id.strip():
+                st.error("❌ Grant ID is required")
+                return
+
+            if not grant_name or not grant_name.strip():
+                st.error("❌ Grant Name is required")
+                return
+
+            if not grant_scheme or not grant_scheme.strip():
+                st.error("❌ Grant Scheme is required")
+                return
+
+            # Validate URL if provided
+            if url and url.strip():
+                if not validate_url(url):
+                    st.error("❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)")
+                    return
+
+            # Check if grant_id already exists
+            existing = grant_model.get_by_id(grant_id.strip())
+            if existing:
+                st.error(f"❌ Grant ID '{grant_id.strip()}' already exists. Please use a different ID.")
+                return
+
+            # Create grant
+            try:
+                grant_model.create({
+                    "grant_id": grant_id.strip(),
+                    "grant_name": grant_name.strip(),
+                    "grant_scheme": grant_scheme.strip(),
+                    "url": url.strip() if url and url.strip() else None,
+                    "grant_summary": grant_summary.strip() if grant_summary and grant_summary.strip() else None
+                })
+                st.success(f"✅ Successfully created grant '{grant_id.strip()}'!")
+                st.session_state.show_create_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error creating grant: {str(e)}")
+
+
+def show_edit_form(grant_id: str):
+    """Display form to edit an existing grant."""
+    grant_data = grant_model.get_by_id(grant_id)
+
+    if not grant_data:
+        st.error("Grant not found")
+        return
+
+    st.subheader(f"✏️ Edit Grant {grant_id}")
+
+    with st.form("edit_grant_form"):
+        grant_name = st.text_input(
+            "Grant Name*",
+            value=grant_data['grant_name']
+        )
+
+        grant_scheme = st.text_input(
+            "Grant Scheme*",
+            value=grant_data['grant_scheme']
+        )
+
+        url = st.text_input(
+            "URL",
+            value=grant_data.get('url', '') or ''
+        )
+
+        grant_summary = st.text_area(
+            "Grant Summary",
+            value=grant_data.get('grant_summary', '') or '',
+            height=100
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Update Grant", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_edit_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not grant_name or not grant_name.strip():
+                st.error("❌ Grant Name is required")
+                return
+
+            if not grant_scheme or not grant_scheme.strip():
+                st.error("❌ Grant Scheme is required")
+                return
+
+            # Validate URL if provided
+            if url and url.strip():
+                if not validate_url(url):
+                    st.error("❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)")
+                    return
+
+            # Update grant
+            try:
+                grant_model.update(grant_id, {
+                    "grant_name": grant_name.strip(),
+                    "grant_scheme": grant_scheme.strip(),
+                    "url": url.strip() if url and url.strip() else None,
+                    "grant_summary": grant_summary.strip() if grant_summary and grant_summary.strip() else None
+                })
+                st.success(f"✅ Successfully updated grant '{grant_id}'!")
+                st.session_state.show_edit_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error updating grant: {str(e)}")
+
+
+def show_delete_confirmation(grant_id: str):
+    """Show confirmation dialog before deleting."""
+    grant_data = grant_model.get_by_id(grant_id)
+    counts = grant_model.get_relationship_counts(grant_id)
+
+    st.warning(f"⚠️ Are you sure you want to delete this grant?")
+
+    st.markdown(f"**Grant ID:** {grant_data['grant_id']}")
+    st.markdown(f"**Grant Name:** {grant_data['grant_name']}")
+    st.markdown(f"**Scheme:** {grant_data['grant_scheme']}")
+
+    # Show impact
+    total_relationships = sum(counts.values())
+    if total_relationships > 0:
+        st.error("**This will also delete the following relationships:**")
+        for relationship, count in counts.items():
+            if count > 0:
+                relationship_display = relationship.replace('_', ' ').title()
+                st.write(f"- {count} {relationship_display}")
+        st.write(f"\n**Total relationships to be removed: {total_relationships}**")
+    else:
+        st.info("This grant has no relationships and can be safely deleted.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_delete_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Delete Grant", type="primary", use_container_width=True):
+            try:
+                grant_model.delete_with_cascade(grant_id)
+                st.success(f"✅ Successfully deleted grant '{grant_id}'!")
+                st.session_state.show_delete_confirm = False
+                st.session_state.grant_view = "list"
+                st.session_state.selected_grant_id = None
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error deleting grant: {str(e)}")
 
 
 def show_list_view():
     """Display list of all grants."""
     st.title("💰 Grants & Funding")
+
+    # Create button
+    if st.button("➕ Create New Grant", type="primary"):
+        st.session_state.show_create_form = True
+
+    # Show create form if requested
+    if st.session_state.show_create_form:
+        show_create_form()
+        st.markdown("---")
 
     total_count = grant_model.count()
     st.info(f"**{total_count}** grant funding opportunities available")
@@ -86,7 +319,8 @@ def show_list_view():
                 "url": st.column_config.LinkColumn("URL", width="medium"),
                 "grant_summary": st.column_config.TextColumn("Summary", width="large"),
             },
-            show_actions=False,  # Grant ID is text, number input won't work
+            show_actions=True,
+            on_view_details=on_view_details,
         )
 
 
@@ -114,13 +348,41 @@ def show_detail_view():
     # Get related data
     related_measures = grant_model.get_related_measures(grant_id)
 
-    st.title(f"💰 Grant Details")
-
-    # Back button
-    if st.button("← Back to List"):
+    # Display detail view
+    def back_to_list():
         st.session_state.grant_view = "list"
         st.session_state.selected_grant_id = None
-        st.rerun()
+        st.session_state.show_edit_form = False
+        st.session_state.show_delete_confirm = False
+
+    st.title(f"💰 Grant Details")
+
+    # Action buttons
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        if st.button("← Back to List"):
+            back_to_list()
+            st.rerun()
+    with col2:
+        if st.button("✏️ Edit", use_container_width=True):
+            st.session_state.show_edit_form = True
+            st.session_state.show_delete_confirm = False
+    with col3:
+        if st.button("🗑️ Delete", use_container_width=True):
+            st.session_state.show_delete_confirm = True
+            st.session_state.show_edit_form = False
+
+    # Show edit form if requested
+    if st.session_state.show_edit_form:
+        st.markdown("---")
+        show_edit_form(grant_id)
+        st.markdown("---")
+
+    # Show delete confirmation if requested
+    if st.session_state.show_delete_confirm:
+        st.markdown("---")
+        show_delete_confirmation(grant_id)
+        st.markdown("---")
 
     # Display basic information
     st.subheader("Basic Information")
@@ -133,13 +395,18 @@ def show_detail_view():
         st.markdown(f"**Scheme:** {grant_data['grant_scheme']}")
         if grant_data['url']:
             st.markdown(f"**URL:** [{grant_data['url']}]({grant_data['url']})")
+        else:
+            st.markdown("**URL:** _Not provided_")
 
     with col2:
+        st.markdown("**Relationship Counts:**")
         st.metric("Funded Measure Links", len(related_measures))
 
     if grant_data['grant_summary']:
         st.markdown("**Summary:**")
         st.info(grant_data['grant_summary'])
+    else:
+        st.markdown("**Summary:** _Not provided_")
 
     # Display related measures
     st.markdown("---")

@@ -2,48 +2,61 @@
 
 **Goal**: Implement full CRUD operations for all entities
 **Duration**: Week 3
-**Status**: 🔄 Not Started
-**Started**: [To be determined]
+**Status**: 🔄 In Progress (Phase 3A Complete)
+**Started**: 2025-11-02
+**Phase 3A Completed**: 2025-11-02
 
 ---
 
 ## Objectives
 
-- [ ] Implement CREATE operations for all entities
-- [ ] Implement UPDATE operations for all entities
-- [ ] Implement DELETE operations with proper cascade handling
-- [ ] Add form validation for all inputs
-- [ ] Implement error handling and user feedback
-- [ ] Add confirmation dialogs for destructive operations
+- [x] Implement CREATE operations for simple entities (Phase 3A)
+- [x] Implement UPDATE operations for simple entities (Phase 3A)
+- [x] Implement DELETE operations with proper cascade handling for simple entities (Phase 3A)
+- [x] Add form validation for all inputs (Phase 3A)
+- [x] Implement error handling and user feedback (Phase 3A)
+- [x] Add confirmation dialogs for destructive operations (Phase 3A)
+- [ ] Implement CREATE operations for complex entities (Phase 3B)
+- [ ] Implement UPDATE operations for complex entities (Phase 3B)
+- [ ] Implement DELETE operations for complex entities (Phase 3B)
 
 ---
 
 ## Task Checklist
 
 ### 1. Reusable Form Components
-- [ ] Create `ui/components/forms.py` - Form builder with validation
-- [ ] Text input with validation
-- [ ] Number input with min/max validation
-- [ ] Dropdown select for foreign keys
-- [ ] Multi-select for many-to-many relationships
-- [ ] URL validation for link fields
-- [ ] Success/error message components
+- [x] Inline forms with validation (implemented in each page)
+- [x] Text input with validation
+- [x] Text area with validation
+- [x] Dropdown select for themes
+- [x] URL validation for link fields (grants)
+- [x] Success/error message components (using st.success/st.error)
+- [ ] Separate `ui/components/forms.py` module (not needed - inline forms work well)
+- [ ] Multi-select for many-to-many relationships (deferred to Phase 3B)
 
 ### 2. CREATE Operations (Ordered by Complexity)
 
-#### Simple Entities (No dependencies)
-- [ ] **Priorities** - Create new biodiversity priority
+#### Simple Entities (No dependencies) - ✅ PHASE 3A COMPLETE
+- [x] **Priorities** - Create new biodiversity priority
   - Form fields: biodiversity_priority, simplified_biodiversity_priority, theme
-  - No dependencies
+  - Auto-incrementing priority_id
+  - Theme dropdown with 6 options
+  - Validation for required fields
+  - Location: `ui/pages/priorities.py:32-98`
 
-- [ ] **Habitats** - Create new habitat type
+- [x] **Habitats** - Create new habitat type
   - Form fields: habitat
-  - No dependencies
+  - Auto-incrementing habitat_id
+  - Validation for required field
+  - Location: `ui/pages/habitats.py:31-71`
 
-#### Moderate Entities (Foreign key dependencies)
-- [ ] **Grants** - Create new grant/funding scheme
-  - Form fields: grant_name, grant_scheme, url, grant_summary
-  - URL validation required
+#### Moderate Entities (Foreign key dependencies) - ✅ PHASE 3A COMPLETE
+- [x] **Grants** - Create new grant/funding scheme
+  - Form fields: grant_id (user-provided), grant_name, grant_scheme, url, grant_summary
+  - URL validation using `urllib.parse.urlparse`
+  - Duplicate ID check
+  - Validation for required fields
+  - Location: `ui/pages/grants.py:52-132`
 
 - [ ] **Species** - Create new species entry
   - Form fields: common_name, linnaean_name, assemblage, taxa, scientific_name
@@ -61,17 +74,25 @@
 
 ### 3. UPDATE Operations
 
-- [ ] **Priorities** - Edit existing priority
-  - Update basic fields
-  - Warn if linked to measures/areas/species
+#### Phase 3A - ✅ COMPLETE
+- [x] **Priorities** - Edit existing priority
+  - Update biodiversity_priority, simplified_biodiversity_priority, theme
+  - Form pre-populated with existing data
+  - Same validation as CREATE
+  - Location: `ui/pages/priorities.py:100-177`
 
-- [ ] **Grants** - Edit existing grant
-  - Update basic fields
-  - URL validation
+- [x] **Grants** - Edit existing grant
+  - Update grant_name, grant_scheme, url, grant_summary
+  - URL validation (same as CREATE)
+  - Cannot change grant_id
+  - Location: `ui/pages/grants.py:135-205`
 
-- [ ] **Habitats** - Edit existing habitat
-  - Update basic fields
-  - Warn if linked to areas
+- [x] **Habitats** - Edit existing habitat
+  - Update habitat name
+  - Form pre-populated with existing data
+  - Location: `ui/pages/habitats.py:74-115`
+
+#### Phase 3B - Pending
 
 - [ ] **Areas** - Edit existing area
   - Update basic fields
@@ -89,26 +110,36 @@
 
 **CRITICAL**: All delete operations must respect foreign key constraints as documented in CLAUDE.md
 
-- [ ] **Priorities** - Delete with cascade
-  - Cascade order:
+#### Phase 3A - ✅ COMPLETE
+
+- [x] **Priorities** - Delete with cascade
+  - Cascade order (from CLAUDE.md):
     1. Delete from `measure_area_priority_grant` where priority_id matches
     2. Delete from `measure_area_priority` where priority_id matches
     3. Delete from `species_area_priority` where priority_id matches
     4. Finally delete from `priority`
-  - Confirmation dialog showing impact
+  - Confirmation dialog showing relationship impact
+  - Model method: `models/priority.py:127-165`
+  - UI: `ui/pages/priorities.py:179-216`
 
-- [ ] **Grants** - Delete with cascade
-  - Cascade order:
+- [x] **Grants** - Delete with cascade
+  - Cascade order (from CLAUDE.md):
     1. Delete from `measure_area_priority_grant` where grant_id matches
     2. Finally delete from `grant_table`
-  - Confirmation dialog
+  - Confirmation dialog showing relationship impact
+  - Model method: `models/grant.py:80-108`
+  - UI: `ui/pages/grants.py:208-246`
 
-- [ ] **Habitats** - Delete with cascade
-  - Cascade order:
+- [x] **Habitats** - Delete with cascade
+  - Cascade order (from CLAUDE.md):
     1. Delete from `habitat_creation_area` where habitat_id matches
     2. Delete from `habitat_management_area` where habitat_id matches
     3. Finally delete from `habitat`
-  - Confirmation dialog
+  - Confirmation dialog showing relationship impact
+  - Model method: `models/habitat.py:104-137`
+  - UI: `ui/pages/habitats.py:118-154`
+
+#### Phase 3B - Pending
 
 - [ ] **Areas** - Delete with cascade
   - Cascade order:
@@ -346,23 +377,28 @@ Each model will need a custom `delete_with_cascade()` method that follows the ca
 
 ## Testing Checklist
 
-### Priority Tests
-- [ ] Create new priority
-- [ ] Update priority name and theme
-- [ ] Delete priority with no relationships
-- [ ] Delete priority with relationships (cascade)
-- [ ] Validation: Required fields
+### Phase 3A Tests - ✅ COMPLETE
 
-### Grant Tests
-- [ ] Create new grant with URL
-- [ ] Update grant details
-- [ ] Delete grant
-- [ ] Validation: URL format
+#### Priority Tests
+- [x] Create new priority
+- [x] Update priority name and theme
+- [x] Delete priority with no relationships
+- [x] Delete priority with relationships (cascade)
+- [x] Validation: Required fields
 
-### Habitat Tests
-- [ ] Create new habitat
-- [ ] Update habitat name
-- [ ] Delete habitat with area links (cascade)
+#### Grant Tests
+- [x] Create new grant with URL
+- [x] Update grant details
+- [x] Delete grant
+- [x] Validation: URL format
+- [x] Duplicate ID detection
+
+#### Habitat Tests
+- [x] Create new habitat
+- [x] Update habitat name
+- [x] Delete habitat with area links (cascade)
+
+### Phase 3B Tests - Pending
 
 ### Area Tests
 - [ ] Create new area
@@ -394,26 +430,113 @@ Each model will need a custom `delete_with_cascade()` method that follows the ca
 
 ## Success Criteria
 
-✅ Users can create new records for all 6 entities
-✅ Users can update existing records
-✅ Users can delete records with proper cascade handling
+### Phase 3A - ✅ COMPLETE
+✅ Users can create new records for simple entities (Priorities, Habitats, Grants)
+✅ Users can update existing records for simple entities
+✅ Users can delete records with proper cascade handling for simple entities
 ✅ All forms validate inputs correctly
+✅ URL validation works for grants
 ✅ Error messages are clear and helpful
 ✅ Database integrity is maintained
 ✅ No orphaned records after deletes
+✅ Confirmation dialogs show relationship impact
+
+### Phase 3B - Pending
+- [ ] Users can create new records for complex entities (Species, Areas, Measures)
+- [ ] Users can update existing records for complex entities
+- [ ] Users can delete records with proper cascade handling for complex entities
 
 ---
 
-**Phase 3 Status**: 🔄 Not Started
-**Estimated Duration**: 2-3 weeks
+**Phase 3 Status**: 🔄 In Progress (Phase 3A Complete)
+**Phase 3A Completed**: 2025-11-02 (Same day!)
+**Estimated Duration for Phase 3B**: 1-2 weeks
 **Priority**: High
 
 ---
 
-## Next Steps
+## Phase 3A Completion Summary
 
-After Phase 3 completion:
-1. Phase 4: Advanced features (bulk operations, import/export)
-2. Phase 5: User authentication and authorization
-3. Phase 6: Audit logging and history tracking
-4. Phase 7: API development for external integrations
+### ✅ What Was Completed (2025-11-02)
+
+**Entities Implemented (3 of 6):**
+1. **Priorities** - Full CRUD with theme dropdown and cascade delete
+2. **Habitats** - Full CRUD with cascade delete
+3. **Grants** - Full CRUD with URL validation and cascade delete
+
+**Files Modified/Created:**
+
+**Models (3 files):**
+- `models/priority.py` - Added `delete_with_cascade()` method (lines 127-165)
+- `models/habitat.py` - Added `delete_with_cascade()` method (lines 104-137)
+- `models/grant.py` - Added `delete_with_cascade()` method (lines 80-108)
+
+**Pages (3 files rewritten):**
+- `ui/pages/priorities.py` - Complete CRUD implementation (464 lines)
+  - CREATE form with theme dropdown and auto-incrementing ID
+  - UPDATE form with pre-populated data
+  - DELETE confirmation showing relationship impact
+  - Session state for form visibility
+
+- `ui/pages/habitats.py` - Complete CRUD implementation (330 lines)
+  - CREATE form with auto-incrementing ID
+  - UPDATE form with pre-populated data
+  - DELETE confirmation showing area relationships
+
+- `ui/pages/grants.py` - Complete CRUD implementation (437 lines)
+  - CREATE form with URL validation and duplicate ID check
+  - UPDATE form with URL validation
+  - DELETE confirmation showing funded measure links
+  - URL validation using `urllib.parse`
+
+**Components (1 file updated):**
+- `ui/components/tables.py` - Fixed to handle both integer and string IDs (lines 105-111)
+  - Now supports grant IDs (text) and numeric IDs (priorities, habitats, etc.)
+
+**Total Code:** ~1,200+ lines of new/updated code
+
+### 🎯 What's Working
+
+- ✅ CREATE operations with validation for all 3 simple entities
+- ✅ UPDATE operations with pre-populated forms
+- ✅ DELETE operations with proper cascade handling
+- ✅ Confirmation dialogs showing relationship impact before delete
+- ✅ URL validation for grants using `urllib.parse.urlparse`
+- ✅ Auto-incrementing IDs for priorities and habitats
+- ✅ User-provided IDs for grants with duplicate checking
+- ✅ Session state management for form visibility
+- ✅ Success/error messages for all operations
+- ✅ Cancel buttons on all forms
+- ✅ Table component handles both integer and string IDs
+
+### 🧪 Testing Completed
+
+All CRUD operations tested and verified working in live app:
+- Priority CRUD operations ✓
+- Habitat CRUD operations ✓
+- Grant CRUD operations ✓
+- URL validation on grants ✓
+- Cascade deletes following CLAUDE.md specifications ✓
+
+### 📝 Patterns Established
+
+1. **Form Pattern**: Inline forms with `st.form()`, validation, and cancel buttons
+2. **Cascade Delete Pattern**: Follow exact order from CLAUDE.md, show impact in confirmation
+3. **Session State Pattern**: Use flags for form visibility (`show_create_form`, `show_edit_form`, `show_delete_confirm`)
+4. **ID Pattern**: Auto-increment for numeric IDs, user-provided for text IDs
+5. **Validation Pattern**: Check required fields, validate URLs, check for duplicates
+
+---
+
+## Next Steps (Phase 3B)
+
+After Phase 3A completion, implement CRUD for complex entities:
+1. **Species** - CRUD with taxonomy fields
+2. **Areas** - CRUD with funding schemes and multiple relationships
+3. **Measures** - CRUD with types, stakeholders, and many relationships (most complex)
+
+Then:
+4. Phase 4: Advanced features (bulk operations, import/export)
+5. Phase 5: User authentication and authorization
+6. Phase 6: Audit logging and history tracking
+7. Phase 7: API development for external integrations

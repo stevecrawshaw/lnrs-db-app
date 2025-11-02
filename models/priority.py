@@ -124,6 +124,46 @@ class PriorityModel(BaseModel):
             "species": len(species),
         }
 
+    def delete_with_cascade(self, priority_id: int) -> bool:
+        """Delete a priority and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from measure_area_priority_grant where priority_id matches
+        2. Delete from measure_area_priority where priority_id matches
+        3. Delete from species_area_priority where priority_id matches
+        4. Finally delete from priority
+
+        Args:
+            priority_id: ID of the priority to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from measure_area_priority_grant
+            query1 = "DELETE FROM measure_area_priority_grant WHERE priority_id = ?"
+            self.execute_raw_query(query1, [priority_id])
+
+            # Step 2: Delete from measure_area_priority
+            query2 = "DELETE FROM measure_area_priority WHERE priority_id = ?"
+            self.execute_raw_query(query2, [priority_id])
+
+            # Step 3: Delete from species_area_priority
+            query3 = "DELETE FROM species_area_priority WHERE priority_id = ?"
+            self.execute_raw_query(query3, [priority_id])
+
+            # Step 4: Delete from priority
+            query4 = "DELETE FROM priority WHERE priority_id = ?"
+            self.execute_raw_query(query4, [priority_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting priority {priority_id} with cascade: {e}")
+            raise
+
 
 # %%
 if __name__ == "__main__":

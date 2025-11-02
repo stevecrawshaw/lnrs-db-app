@@ -102,7 +102,13 @@ def display_data_table(
             selected_row_idx = event.selection.rows[0]
             selected_id = df_pandas.iloc[selected_row_idx][id_column]
             # Convert numpy types to Python native types for DuckDB compatibility
-            selected_id = int(selected_id)
+            # Handle both integer and string IDs
+            try:
+                # Try to convert to int for numeric IDs
+                selected_id = int(selected_id)
+            except (ValueError, TypeError):
+                # Keep as string for text IDs (e.g., grant IDs)
+                selected_id = str(selected_id)
             on_view_details(selected_id)
             st.rerun()
     else:

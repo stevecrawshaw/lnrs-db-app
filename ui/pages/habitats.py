@@ -1,4 +1,4 @@
-"""Habitats page - View habitat types and their areas."""
+"""Habitats page - View and manage habitat types."""
 
 import sys
 from pathlib import Path
@@ -20,11 +20,152 @@ if "habitat_view" not in st.session_state:
     st.session_state.habitat_view = "list"
 if "selected_habitat_id" not in st.session_state:
     st.session_state.selected_habitat_id = None
+if "show_create_form" not in st.session_state:
+    st.session_state.show_create_form = False
+if "show_edit_form" not in st.session_state:
+    st.session_state.show_edit_form = False
+if "show_delete_confirm" not in st.session_state:
+    st.session_state.show_delete_confirm = False
+
+
+def show_create_form():
+    """Display form to create a new habitat."""
+    st.subheader("➕ Create New Habitat")
+
+    with st.form("create_habitat_form", clear_on_submit=True):
+        habitat = st.text_input(
+            "Habitat Type*",
+            help="Name of the habitat type (required)",
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Create Habitat", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_create_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate
+            if not habitat or not habitat.strip():
+                st.error("❌ Habitat Type is required")
+                return
+
+            # Get next habitat_id
+            max_id = habitat_model.execute_raw_query("SELECT MAX(habitat_id) FROM habitat").fetchone()[0]
+            next_id = (max_id or 0) + 1
+
+            # Create habitat
+            try:
+                habitat_model.create({
+                    "habitat_id": next_id,
+                    "habitat": habitat.strip()
+                })
+                st.success(f"✅ Successfully created habitat ID {next_id}!")
+                st.session_state.show_create_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error creating habitat: {str(e)}")
+
+
+def show_edit_form(habitat_id: int):
+    """Display form to edit an existing habitat."""
+    habitat_data = habitat_model.get_by_id(habitat_id)
+
+    if not habitat_data:
+        st.error("Habitat not found")
+        return
+
+    st.subheader(f"✏️ Edit Habitat {habitat_id}")
+
+    with st.form("edit_habitat_form"):
+        habitat = st.text_input(
+            "Habitat Type*",
+            value=habitat_data['habitat']
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Update Habitat", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_edit_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate
+            if not habitat or not habitat.strip():
+                st.error("❌ Habitat Type is required")
+                return
+
+            # Update habitat
+            try:
+                habitat_model.update(habitat_id, {
+                    "habitat": habitat.strip()
+                })
+                st.success(f"✅ Successfully updated habitat ID {habitat_id}!")
+                st.session_state.show_edit_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error updating habitat: {str(e)}")
+
+
+def show_delete_confirmation(habitat_id: int):
+    """Show confirmation dialog before deleting."""
+    habitat_data = habitat_model.get_by_id(habitat_id)
+    counts = habitat_model.get_relationship_counts(habitat_id)
+
+    st.warning(f"⚠️ Are you sure you want to delete this habitat?")
+
+    st.markdown(f"**Habitat:** {habitat_data['habitat']}")
+
+    # Show impact
+    total_relationships = sum(counts.values())
+    if total_relationships > 0:
+        st.error("**This will also delete the following relationships:**")
+        for relationship, count in counts.items():
+            if count > 0:
+                relationship_display = relationship.replace('_', ' ').title()
+                st.write(f"- {count} {relationship_display}")
+        st.write(f"\n**Total relationships to be removed: {total_relationships}**")
+    else:
+        st.info("This habitat has no relationships and can be safely deleted.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_delete_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Delete Habitat", type="primary", use_container_width=True):
+            try:
+                habitat_model.delete_with_cascade(habitat_id)
+                st.success(f"✅ Successfully deleted habitat ID {habitat_id}!")
+                st.session_state.show_delete_confirm = False
+                st.session_state.habitat_view = "list"
+                st.session_state.selected_habitat_id = None
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error deleting habitat: {str(e)}")
 
 
 def show_list_view():
     """Display list of all habitats."""
     st.title("🌳 Habitats")
+
+    # Create button
+    if st.button("➕ Create New Habitat", type="primary"):
+        st.session_state.show_create_form = True
+
+    # Show create form if requested
+    if st.session_state.show_create_form:
+        show_create_form()
+        st.markdown("---")
 
     total_count = habitat_model.count()
     st.info(f"**{total_count}** habitat types for creation and management")
@@ -86,16 +227,41 @@ def show_detail_view():
     creation_areas = habitat_model.get_creation_areas(habitat_id)
     management_areas = habitat_model.get_management_areas(habitat_id)
 
-    st.title(f"🌳 Habitat Details")
-
-    # Back button
-    if st.button("← Back to List"):
+    # Display detail view
+    def back_to_list():
         st.session_state.habitat_view = "list"
         st.session_state.selected_habitat_id = None
-        # Clear table selection state to prevent auto-reselection
-        if "habitat_table_selection" in st.session_state:
-            del st.session_state.habitat_table_selection
-        st.rerun()
+        st.session_state.show_edit_form = False
+        st.session_state.show_delete_confirm = False
+
+    st.title(f"🌳 Habitat Details")
+
+    # Action buttons
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        if st.button("← Back to List"):
+            back_to_list()
+            st.rerun()
+    with col2:
+        if st.button("✏️ Edit", use_container_width=True):
+            st.session_state.show_edit_form = True
+            st.session_state.show_delete_confirm = False
+    with col3:
+        if st.button("🗑️ Delete", use_container_width=True):
+            st.session_state.show_delete_confirm = True
+            st.session_state.show_edit_form = False
+
+    # Show edit form if requested
+    if st.session_state.show_edit_form:
+        st.markdown("---")
+        show_edit_form(habitat_id)
+        st.markdown("---")
+
+    # Show delete confirmation if requested
+    if st.session_state.show_delete_confirm:
+        st.markdown("---")
+        show_delete_confirmation(habitat_id)
+        st.markdown("---")
 
     # Display basic information
     st.subheader("Basic Information")
@@ -108,6 +274,7 @@ def show_detail_view():
         st.info(habitat_data['habitat'])
 
     with col2:
+        st.markdown("**Area Counts:**")
         st.metric("Creation Areas", len(creation_areas))
         st.metric("Management Areas", len(management_areas))
 

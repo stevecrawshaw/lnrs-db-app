@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from models.priority import PriorityModel
-from ui.components.tables import display_data_table, display_detail_view, display_grouped_table
+from ui.components.tables import display_data_table
 
 # Initialize model
 priority_model = PriorityModel()
@@ -21,11 +21,212 @@ if "priority_view" not in st.session_state:
     st.session_state.priority_view = "list"
 if "selected_priority_id" not in st.session_state:
     st.session_state.selected_priority_id = None
+if "show_create_form" not in st.session_state:
+    st.session_state.show_create_form = False
+if "show_edit_form" not in st.session_state:
+    st.session_state.show_edit_form = False
+if "show_delete_confirm" not in st.session_state:
+    st.session_state.show_delete_confirm = False
+
+
+def show_create_form():
+    """Display form to create a new priority."""
+    st.subheader("➕ Create New Priority")
+
+    with st.form("create_priority_form", clear_on_submit=True):
+        biodiversity_priority = st.text_area(
+            "Biodiversity Priority*",
+            help="Full description of the biodiversity priority (required)",
+            height=100
+        )
+
+        simplified_priority = st.text_input(
+            "Simplified Priority",
+            help="Optional simplified version"
+        )
+
+        theme = st.selectbox(
+            "Theme*",
+            options=[
+                "Grassland and farmland",
+                "Heathland and moorland",
+                "Marine",
+                "Wetlands, rivers and floodplains",
+                "Woodland",
+                "All habitats"
+            ],
+            help="Select the theme category (required)"
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Create Priority", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_create_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate
+            if not biodiversity_priority or not biodiversity_priority.strip():
+                st.error("❌ Biodiversity Priority is required")
+                return
+
+            if not theme:
+                st.error("❌ Theme is required")
+                return
+
+            # Get next priority_id
+            max_id = priority_model.execute_raw_query("SELECT MAX(priority_id) FROM priority").fetchone()[0]
+            next_id = (max_id or 0) + 1
+
+            # Create priority
+            try:
+                priority_model.create({
+                    "priority_id": next_id,
+                    "biodiversity_priority": biodiversity_priority.strip(),
+                    "simplified_biodiversity_priority": simplified_priority.strip() if simplified_priority else None,
+                    "theme": theme
+                })
+                st.success(f"✅ Successfully created priority ID {next_id}!")
+                st.session_state.show_create_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error creating priority: {str(e)}")
+
+
+def show_edit_form(priority_id: int):
+    """Display form to edit an existing priority."""
+    priority_data = priority_model.get_by_id(priority_id)
+
+    if not priority_data:
+        st.error("Priority not found")
+        return
+
+    st.subheader(f"✏️ Edit Priority {priority_id}")
+
+    with st.form("edit_priority_form"):
+        biodiversity_priority = st.text_area(
+            "Biodiversity Priority*",
+            value=priority_data['biodiversity_priority'],
+            height=100
+        )
+
+        simplified_priority = st.text_input(
+            "Simplified Priority",
+            value=priority_data.get('simplified_biodiversity_priority', '') or ''
+        )
+
+        theme = st.selectbox(
+            "Theme*",
+            options=[
+                "Grassland and farmland",
+                "Heathland and moorland",
+                "Marine",
+                "Wetlands, rivers and floodplains",
+                "Woodland",
+                "All habitats"
+            ],
+            index=[
+                "Grassland and farmland",
+                "Heathland and moorland",
+                "Marine",
+                "Wetlands, rivers and floodplains",
+                "Woodland",
+                "All habitats"
+            ].index(priority_data['theme'].strip()) if priority_data['theme'].strip() in [
+                "Grassland and farmland",
+                "Heathland and moorland",
+                "Marine",
+                "Wetlands, rivers and floodplains",
+                "Woodland",
+                "All habitats"
+            ] else 0
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Update Priority", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_edit_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate
+            if not biodiversity_priority or not biodiversity_priority.strip():
+                st.error("❌ Biodiversity Priority is required")
+                return
+
+            # Update priority
+            try:
+                priority_model.update(priority_id, {
+                    "biodiversity_priority": biodiversity_priority.strip(),
+                    "simplified_biodiversity_priority": simplified_priority.strip() if simplified_priority else None,
+                    "theme": theme
+                })
+                st.success(f"✅ Successfully updated priority ID {priority_id}!")
+                st.session_state.show_edit_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error updating priority: {str(e)}")
+
+
+def show_delete_confirmation(priority_id: int):
+    """Show confirmation dialog before deleting."""
+    priority_data = priority_model.get_by_id(priority_id)
+    counts = priority_model.get_relationship_counts(priority_id)
+
+    st.warning(f"⚠️ Are you sure you want to delete this priority?")
+
+    st.markdown(f"**Priority:** {priority_data['biodiversity_priority'][:100]}...")
+    st.markdown(f"**Theme:** {priority_data['theme']}")
+
+    # Show impact
+    total_relationships = sum(counts.values())
+    if total_relationships > 0:
+        st.error("**This will also delete the following relationships:**")
+        for relationship, count in counts.items():
+            if count > 0:
+                st.write(f"- {count} {relationship}")
+        st.write(f"\n**Total relationships to be removed: {total_relationships}**")
+    else:
+        st.info("This priority has no relationships and can be safely deleted.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_delete_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Delete Priority", type="primary", use_container_width=True):
+            try:
+                priority_model.delete_with_cascade(priority_id)
+                st.success(f"✅ Successfully deleted priority ID {priority_id}!")
+                st.session_state.show_delete_confirm = False
+                st.session_state.priority_view = "list"
+                st.session_state.selected_priority_id = None
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error deleting priority: {str(e)}")
 
 
 def show_list_view():
     """Display list of all priorities."""
     st.title("🎯 Biodiversity Priorities")
+
+    # Create button
+    if st.button("➕ Create New Priority", type="primary"):
+        st.session_state.show_create_form = True
+
+    # Show create form if requested
+    if st.session_state.show_create_form:
+        show_create_form()
+        st.markdown("---")
 
     total_count = priority_model.count()
     st.info(f"**{total_count}** biodiversity priorities organized by themes")
@@ -69,6 +270,8 @@ def show_list_view():
                             "Simplified", width="medium"
                         ),
                     },
+                    on_select="rerun",
+                    selection_mode="single-row"
                 )
 
     else:
@@ -138,13 +341,37 @@ def show_detail_view():
     def back_to_list():
         st.session_state.priority_view = "list"
         st.session_state.selected_priority_id = None
+        st.session_state.show_edit_form = False
+        st.session_state.show_delete_confirm = False
 
     st.title(f"🎯 Priority Details")
 
-    # Back button
-    if st.button("← Back to List"):
-        back_to_list()
-        st.rerun()
+    # Action buttons
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    with col1:
+        if st.button("← Back to List"):
+            back_to_list()
+            st.rerun()
+    with col2:
+        if st.button("✏️ Edit", use_container_width=True):
+            st.session_state.show_edit_form = True
+            st.session_state.show_delete_confirm = False
+    with col3:
+        if st.button("🗑️ Delete", use_container_width=True):
+            st.session_state.show_delete_confirm = True
+            st.session_state.show_edit_form = False
+
+    # Show edit form if requested
+    if st.session_state.show_edit_form:
+        st.markdown("---")
+        show_edit_form(priority_id)
+        st.markdown("---")
+
+    # Show delete confirmation if requested
+    if st.session_state.show_delete_confirm:
+        st.markdown("---")
+        show_delete_confirmation(priority_id)
+        st.markdown("---")
 
     # Display basic information
     st.subheader("Basic Information")
