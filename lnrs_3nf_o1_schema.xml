@@ -1,0 +1,204 @@
+<?xml version='1.0' encoding='utf-8'?>
+<database name="lnrs_3nf_o1">
+  <table name="area">
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="area_name" type="VARCHAR" nullable="YES" />
+    <column name="area_description" type="VARCHAR" nullable="YES" />
+    <column name="area_link" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_mgt" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_creation" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="area_funding_schemes">
+    <column name="id" type="INTEGER" nullable="NO" />
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="area_name" type="VARCHAR" nullable="NO" />
+    <column name="local_funding_schemes" type="VARCHAR" nullable="NO" />
+  </table>
+  <table name="area_geom">
+    <column name="geo_point_2d" type="GEOMETRY" nullable="YES" />
+    <column name="geo_shape" type="GEOMETRY" nullable="YES" />
+    <column name="area_id" type="INTEGER" nullable="YES" />
+  </table>
+  <table name="benefits">
+    <column name="benefit_id" type="INTEGER" nullable="NO" />
+    <column name="benefit" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="grant_table">
+    <column name="grant_id" type="VARCHAR" nullable="NO" />
+    <column name="grant_name" type="VARCHAR" nullable="YES" />
+    <column name="grant_scheme" type="VARCHAR" nullable="YES" />
+    <column name="url" type="VARCHAR" nullable="YES" />
+    <column name="grant_summary" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="habitat">
+    <column name="habitat_id" type="INTEGER" nullable="NO" />
+    <column name="habitat" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="habitat_creation_area">
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="habitat_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="habitat_management_area">
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="habitat_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="measure" type="VARCHAR" nullable="YES" />
+    <column name="other_priorities_delivered" type="VARCHAR" nullable="YES" />
+    <column name="core_supplementary" type="VARCHAR" nullable="YES" />
+    <column name="mapped_unmapped" type="VARCHAR" nullable="YES" />
+    <column name="relevant_map_layer" type="VARCHAR" nullable="YES" />
+    <column name="link_to_further_guidance" type="VARCHAR" nullable="YES" />
+    <column name="concise_measure" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="measure_area_priority">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="priority_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure_area_priority_grant">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="priority_id" type="INTEGER" nullable="NO" />
+    <column name="grant_id" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="measure_has_benefits">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="benefit_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure_has_species">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="species_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure_has_stakeholder">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="stakeholder_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure_has_type">
+    <column name="measure_id" type="INTEGER" nullable="NO" />
+    <column name="measure_type_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="measure_type">
+    <column name="measure_type_id" type="INTEGER" nullable="NO" />
+    <column name="measure_type" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="priority">
+    <column name="priority_id" type="INTEGER" nullable="NO" />
+    <column name="biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="simplified_biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="theme" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="source_table">
+    <column name="measure_id" type="BIGINT" nullable="YES" />
+    <column name="priority_id" type="BIGINT" nullable="YES" />
+    <column name="measure" type="VARCHAR" nullable="YES" />
+    <column name="other_priorities_delivered" type="VARCHAR" nullable="YES" />
+    <column name="core_supplementary" type="VARCHAR" nullable="YES" />
+    <column name="mapped_unmapped" type="VARCHAR" nullable="YES" />
+    <column name="measure_type" type="VARCHAR" nullable="YES" />
+    <column name="stakeholder" type="VARCHAR" nullable="YES" />
+    <column name="relevant_map_layer" type="VARCHAR" nullable="YES" />
+    <column name="link_to_further_guidance" type="VARCHAR" nullable="YES" />
+    <column name="area_id" type="BIGINT" nullable="YES" />
+    <column name="grant_id" type="VARCHAR" nullable="YES" />
+    <column name="area_name" type="VARCHAR" nullable="YES" />
+    <column name="area_description" type="VARCHAR" nullable="YES" />
+    <column name="area_link" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_mgt" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_creation" type="VARCHAR" nullable="YES" />
+    <column name="theme" type="VARCHAR" nullable="YES" />
+    <column name="biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="simplified_biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="grant_name" type="VARCHAR" nullable="YES" />
+    <column name="grant_scheme" type="VARCHAR" nullable="YES" />
+    <column name="grant_summary" type="VARCHAR" nullable="YES" />
+    <column name="url" type="VARCHAR" nullable="YES" />
+    <column name="local_funding_schemes" type="VARCHAR" nullable="YES" />
+    <column name="concise_measure" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="species">
+    <column name="taxa" type="VARCHAR" nullable="YES" />
+    <column name="common_name" type="VARCHAR" nullable="YES" />
+    <column name="assemblage" type="VARCHAR" nullable="YES" />
+    <column name="species_link" type="VARCHAR" nullable="YES" />
+    <column name="linnaean_name" type="VARCHAR" nullable="YES" />
+    <column name="species_id" type="INTEGER" nullable="NO" />
+    <column name="usage_key" type="VARCHAR" nullable="YES" />
+    <column name="scientific_name" type="VARCHAR" nullable="YES" />
+    <column name="status" type="VARCHAR" nullable="YES" />
+    <column name="kingdom" type="VARCHAR" nullable="YES" />
+    <column name="phylum" type="VARCHAR" nullable="YES" />
+    <column name="order" type="VARCHAR" nullable="YES" />
+    <column name="family" type="VARCHAR" nullable="YES" />
+    <column name="genus" type="VARCHAR" nullable="YES" />
+    <column name="species" type="VARCHAR" nullable="YES" />
+    <column name="kingdom_key" type="VARCHAR" nullable="YES" />
+    <column name="phylum_key" type="VARCHAR" nullable="YES" />
+    <column name="class_key" type="VARCHAR" nullable="YES" />
+    <column name="order_key" type="VARCHAR" nullable="YES" />
+    <column name="family_key" type="VARCHAR" nullable="YES" />
+    <column name="genus_key" type="VARCHAR" nullable="YES" />
+    <column name="species_key" type="VARCHAR" nullable="YES" />
+    <column name="synonym" type="VARCHAR" nullable="YES" />
+    <column name="class" type="VARCHAR" nullable="YES" />
+    <column name="accepted_usage_key" type="VARCHAR" nullable="YES" />
+    <column name="verbatim_name" type="VARCHAR" nullable="YES" />
+    <column name="verbatim_index" type="BIGINT" nullable="YES" />
+    <column name="gbif_species_url" type="VARCHAR" nullable="YES" />
+    <column name="image_url" type="VARCHAR" nullable="YES" />
+    <column name="license" type="VARCHAR" nullable="YES" />
+    <column name="attribution" type="VARCHAR" nullable="YES" />
+    <column name="photo_url" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="species_area_priority">
+    <column name="species_id" type="INTEGER" nullable="NO" />
+    <column name="area_id" type="INTEGER" nullable="NO" />
+    <column name="priority_id" type="INTEGER" nullable="NO" />
+  </table>
+  <table name="stakeholder">
+    <column name="stakeholder_id" type="INTEGER" nullable="NO" />
+    <column name="stakeholder" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="apmg_slim_vw">
+    <column name="core_supplementary" type="VARCHAR" nullable="YES" />
+    <column name="measure_type" type="VARCHAR" nullable="YES" />
+    <column name="stakeholder" type="VARCHAR" nullable="YES" />
+    <column name="area_name" type="VARCHAR" nullable="YES" />
+    <column name="area_id" type="INTEGER" nullable="YES" />
+    <column name="grant_id" type="VARCHAR" nullable="YES" />
+    <column name="priority_id" type="INTEGER" nullable="YES" />
+    <column name="biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="measure" type="VARCHAR" nullable="YES" />
+    <column name="concise_measure" type="VARCHAR" nullable="YES" />
+    <column name="measure_id" type="INTEGER" nullable="YES" />
+    <column name="link_to_further_guidance" type="VARCHAR" nullable="YES" />
+    <column name="grant_name" type="VARCHAR" nullable="YES" />
+    <column name="url" type="VARCHAR" nullable="YES" />
+  </table>
+  <table name="source_table_recreated_vw">
+    <column name="measure_id" type="INTEGER" nullable="YES" />
+    <column name="measure" type="VARCHAR" nullable="YES" />
+    <column name="concise_measure" type="VARCHAR" nullable="YES" />
+    <column name="core_supplementary" type="VARCHAR" nullable="YES" />
+    <column name="mapped_unmapped" type="VARCHAR" nullable="YES" />
+    <column name="link_to_further_guidance" type="VARCHAR" nullable="YES" />
+    <column name="measure_type" type="VARCHAR" nullable="YES" />
+    <column name="stakeholder" type="VARCHAR" nullable="YES" />
+    <column name="area_id" type="INTEGER" nullable="YES" />
+    <column name="area_name" type="VARCHAR" nullable="YES" />
+    <column name="area_description" type="VARCHAR" nullable="YES" />
+    <column name="area_link" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_mgt" type="VARCHAR" nullable="YES" />
+    <column name="bng_hab_creation" type="VARCHAR" nullable="YES" />
+    <column name="priority_id" type="INTEGER" nullable="YES" />
+    <column name="biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="simplified_biodiversity_priority" type="VARCHAR" nullable="YES" />
+    <column name="theme" type="VARCHAR" nullable="YES" />
+    <column name="grant_id" type="VARCHAR" nullable="YES" />
+    <column name="grant_name" type="VARCHAR" nullable="YES" />
+    <column name="grant_scheme" type="VARCHAR" nullable="YES" />
+    <column name="grant_summary" type="VARCHAR" nullable="YES" />
+    <column name="url" type="VARCHAR" nullable="YES" />
+  </table>
+</database>
