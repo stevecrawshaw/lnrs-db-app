@@ -2,10 +2,11 @@
 
 **Goal**: Implement full CRUD operations for all entities
 **Duration**: Week 3
-**Status**: 🔄 In Progress (Phase 3A Complete, Phase 3B Mostly Complete)
+**Status**: ✅ COMPLETE (All 6 Entities Implemented!)
 **Started**: 2025-11-02
 **Phase 3A Completed**: 2025-11-02
-**Phase 3B Progress**: 2025-11-02 (Species & Areas Complete)
+**Phase 3B Completed**: 2025-11-02 (All Entities Done!)
+**Completion Date**: 2025-11-02
 
 ---
 
@@ -17,10 +18,10 @@
 - [x] Add form validation for all inputs (Phase 3A)
 - [x] Implement error handling and user feedback (Phase 3A)
 - [x] Add confirmation dialogs for destructive operations (Phase 3A)
-- [x] Implement CREATE operations for complex entities (Phase 3B) - Species & Areas ✅
-- [x] Implement UPDATE operations for complex entities (Phase 3B) - Species & Areas ✅
-- [x] Implement DELETE operations for complex entities (Phase 3B) - Species & Areas ✅
-- [ ] Implement Measures CRUD (Phase 3B final entity)
+- [x] Implement CREATE operations for complex entities (Phase 3B) - All Complete ✅
+- [x] Implement UPDATE operations for complex entities (Phase 3B) - All Complete ✅
+- [x] Implement DELETE operations for complex entities (Phase 3B) - All Complete ✅
+- [x] Implement Measures CRUD (Phase 3B) - ✅ COMPLETE!
 
 ---
 
@@ -75,9 +76,13 @@
   - Location: `ui/pages/areas.py:53-117`
 
 #### Complex Entities (Many-to-many relationships)
-- [ ] **Measures** - Create new measure
+- [x] **Measures** - Create new measure ✅ PHASE 3B COMPLETE
   - Form fields: measure, concise_measure, core_supplementary, mapped_unmapped, link_to_further_guidance
-  - Relationships: types (multi-select), stakeholders (multi-select)
+  - Multi-select relationships: types (11 options), stakeholders (5 options), benefits (8 options)
+  - Auto-incrementing measure_id using MAX() pattern
+  - URL validation for link_to_further_guidance
+  - Validation for required fields
+  - Location: `ui/pages/measures.py:53-172`
   - Note: Area-Priority linkage comes later
 
 ### 3. UPDATE Operations
@@ -114,9 +119,12 @@
   - Form pre-populated with existing data
   - Location: `ui/pages/species.py:126-220`
 
-- [ ] **Measures** - Edit existing measure
-  - Update basic fields
-  - Update types and stakeholders (multi-select)
+- [x] **Measures** - Edit existing measure ✅
+  - Update all basic fields (measure, concise_measure, etc.)
+  - Update multi-select relationships (types, stakeholders, benefits)
+  - Pre-populate multiselects with existing relationships
+  - Delete old relationships and add new ones on update
+  - Location: `ui/pages/measures.py:175-319`
 
 ### 4. DELETE Operations (With Cascade Handling)
 
@@ -176,8 +184,8 @@
   - UI: `ui/pages/species.py:223-261`
   - Confirmation dialog showing relationship impact
 
-- [ ] **Measures** - Delete with cascade
-  - Cascade order:
+- [x] **Measures** - Delete with cascade ✅
+  - Cascade order (from CLAUDE.md):
     1. Delete from `measure_has_type` where measure_id matches
     2. Delete from `measure_has_stakeholder` where measure_id matches
     3. Delete from `measure_area_priority_grant` where measure_id matches
@@ -185,7 +193,11 @@
     5. Delete from `measure_has_benefits` where measure_id matches
     6. Delete from `measure_has_species` where measure_id matches
     7. Finally delete from `measure`
-  - Confirmation dialog showing all relationships
+  - Model method: `models/measure.py:280-333`
+  - UI: `ui/pages/measures.py:322-364`
+  - Confirmation dialog with comprehensive relationship impact preview
+  - **6-table cascade delete** - tied with Areas for most complex!
+  - Extra warning for measures with 20+ relationships showing all relationships
 
 ### 5. Validation & Error Handling
 

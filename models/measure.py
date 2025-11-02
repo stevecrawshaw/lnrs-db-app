@@ -247,6 +247,124 @@ class MeasureModel(BaseModel):
             "benefits": len(benefits),
         }
 
+    def get_all_measure_types(self) -> pl.DataFrame:
+        """Get all available measure types for multi-select dropdown.
+
+        Returns:
+            pl.DataFrame: All measure types
+        """
+        query = "SELECT measure_type_id, measure_type FROM measure_type ORDER BY measure_type"
+        result = self.execute_raw_query(query)
+        return result.pl()
+
+    def get_all_stakeholders(self) -> pl.DataFrame:
+        """Get all available stakeholders for multi-select dropdown.
+
+        Returns:
+            pl.DataFrame: All stakeholders
+        """
+        query = "SELECT stakeholder_id, stakeholder FROM stakeholder ORDER BY stakeholder"
+        result = self.execute_raw_query(query)
+        return result.pl()
+
+    def get_all_benefits(self) -> pl.DataFrame:
+        """Get all available benefits for multi-select dropdown.
+
+        Returns:
+            pl.DataFrame: All benefits
+        """
+        query = "SELECT benefit_id, benefit FROM benefits ORDER BY benefit"
+        result = self.execute_raw_query(query)
+        return result.pl()
+
+    def delete_with_cascade(self, measure_id: int) -> bool:
+        """Delete a measure and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from measure_has_type where measure_id matches
+        2. Delete from measure_has_stakeholder where measure_id matches
+        3. Delete from measure_area_priority_grant where measure_id matches
+        4. Delete from measure_area_priority where measure_id matches
+        5. Delete from measure_has_benefits where measure_id matches
+        6. Delete from measure_has_species where measure_id matches
+        7. Finally delete from measure
+
+        Args:
+            measure_id: ID of the measure to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from measure_has_type
+            query1 = "DELETE FROM measure_has_type WHERE measure_id = ?"
+            self.execute_raw_query(query1, [measure_id])
+
+            # Step 2: Delete from measure_has_stakeholder
+            query2 = "DELETE FROM measure_has_stakeholder WHERE measure_id = ?"
+            self.execute_raw_query(query2, [measure_id])
+
+            # Step 3: Delete from measure_area_priority_grant
+            query3 = "DELETE FROM measure_area_priority_grant WHERE measure_id = ?"
+            self.execute_raw_query(query3, [measure_id])
+
+            # Step 4: Delete from measure_area_priority
+            query4 = "DELETE FROM measure_area_priority WHERE measure_id = ?"
+            self.execute_raw_query(query4, [measure_id])
+
+            # Step 5: Delete from measure_has_benefits
+            query5 = "DELETE FROM measure_has_benefits WHERE measure_id = ?"
+            self.execute_raw_query(query5, [measure_id])
+
+            # Step 6: Delete from measure_has_species
+            query6 = "DELETE FROM measure_has_species WHERE measure_id = ?"
+            self.execute_raw_query(query6, [measure_id])
+
+            # Step 7: Delete from measure
+            query7 = "DELETE FROM measure WHERE measure_id = ?"
+            self.execute_raw_query(query7, [measure_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting measure {measure_id} with cascade: {e}")
+            raise
+
+    def add_measure_types(self, measure_id: int, type_ids: list[int]) -> None:
+        """Add types to a measure.
+
+        Args:
+            measure_id: ID of the measure
+            type_ids: List of measure_type_ids to link
+        """
+        for type_id in type_ids:
+            query = "INSERT INTO measure_has_type (measure_id, measure_type_id) VALUES (?, ?)"
+            self.execute_raw_query(query, [measure_id, type_id])
+
+    def add_stakeholders(self, measure_id: int, stakeholder_ids: list[int]) -> None:
+        """Add stakeholders to a measure.
+
+        Args:
+            measure_id: ID of the measure
+            stakeholder_ids: List of stakeholder_ids to link
+        """
+        for stakeholder_id in stakeholder_ids:
+            query = "INSERT INTO measure_has_stakeholder (measure_id, stakeholder_id) VALUES (?, ?)"
+            self.execute_raw_query(query, [measure_id, stakeholder_id])
+
+    def add_benefits(self, measure_id: int, benefit_ids: list[int]) -> None:
+        """Add benefits to a measure.
+
+        Args:
+            measure_id: ID of the measure
+            benefit_ids: List of benefit_ids to link
+        """
+        for benefit_id in benefit_ids:
+            query = "INSERT INTO measure_has_benefits (measure_id, benefit_id) VALUES (?, ?)"
+            self.execute_raw_query(query, [measure_id, benefit_id])
+
 
 # %%
 if __name__ == "__main__":
