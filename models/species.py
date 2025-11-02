@@ -106,6 +106,41 @@ class SpeciesModel(BaseModel):
             "priorities": len(priorities),
         }
 
+    def delete_with_cascade(self, species_id: int) -> bool:
+        """Delete a species and all its relationships following cascade order.
+
+        Cascade order (from CLAUDE.md):
+        1. Delete from species_area_priority where species_id matches
+        2. Delete from measure_has_species where species_id matches
+        3. Finally delete from species
+
+        Args:
+            species_id: ID of the species to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If any deletion step fails
+        """
+        try:
+            # Step 1: Delete from species_area_priority
+            query1 = "DELETE FROM species_area_priority WHERE species_id = ?"
+            self.execute_raw_query(query1, [species_id])
+
+            # Step 2: Delete from measure_has_species
+            query2 = "DELETE FROM measure_has_species WHERE species_id = ?"
+            self.execute_raw_query(query2, [species_id])
+
+            # Step 3: Delete from species
+            query3 = "DELETE FROM species WHERE species_id = ?"
+            self.execute_raw_query(query3, [species_id])
+
+            return True
+        except Exception as e:
+            print(f"Error deleting species {species_id} with cascade: {e}")
+            raise
+
 
 # %%
 if __name__ == "__main__":

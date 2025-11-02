@@ -21,11 +21,258 @@ if "species_view" not in st.session_state:
     st.session_state.species_view = "list"
 if "selected_species_id" not in st.session_state:
     st.session_state.selected_species_id = None
+if "show_create_form" not in st.session_state:
+    st.session_state.show_create_form = False
+if "show_edit_form" not in st.session_state:
+    st.session_state.show_edit_form = False
+if "show_delete_confirm" not in st.session_state:
+    st.session_state.show_delete_confirm = False
+
+
+def show_create_form():
+    """Display form to create a new species."""
+    st.subheader("➕ Create New Species")
+
+    with st.form("create_species_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            common_name = st.text_input(
+                "Common Name*",
+                help="Common name of the species (required)",
+            )
+
+            scientific_name = st.text_input(
+                "Scientific Name*",
+                help="Scientific name of the species (required)",
+            )
+
+            assemblage = st.selectbox(
+                "Assemblage*",
+                options=[
+                    "Birds",
+                    "Butterflies",
+                    "Fish",
+                    "Mammals",
+                    "Moths",
+                    "Plants",
+                    "Reptiles and amphibians",
+                ],
+                help="Assemblage group (required)"
+            )
+
+            taxa = st.selectbox(
+                "Taxa*",
+                options=["Bird", "Butterfly", "Fish", "Mammal", "Moth", "Plant", "Reptile/Amphibian"],
+                help="Taxa classification (required)"
+            )
+
+        with col2:
+            st.markdown("**Taxonomy (Optional)**")
+            kingdom = st.text_input("Kingdom", help="e.g., Animalia, Plantae")
+            phylum = st.text_input("Phylum", help="e.g., Chordata")
+            class_name = st.text_input("Class", help="e.g., Aves, Mammalia")
+            order = st.text_input("Order", help="e.g., Passeriformes")
+            family = st.text_input("Family", help="e.g., Turdidae")
+            genus = st.text_input("Genus", help="e.g., Turdus")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Create Species", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_create_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not common_name or not common_name.strip():
+                st.error("❌ Common Name is required")
+                return
+
+            if not scientific_name or not scientific_name.strip():
+                st.error("❌ Scientific Name is required")
+                return
+
+            # Get next species_id
+            max_id = species_model.execute_raw_query("SELECT MAX(species_id) FROM species").fetchone()[0]
+            next_id = (max_id or 0) + 1
+
+            # Create species
+            try:
+                species_model.create({
+                    "species_id": next_id,
+                    "common_name": common_name.strip(),
+                    "scientific_name": scientific_name.strip(),
+                    "linnaean_name": scientific_name.strip(),  # Use same as scientific_name
+                    "assemblage": assemblage,
+                    "taxa": taxa,
+                    "kingdom": kingdom.strip() if kingdom and kingdom.strip() else None,
+                    "phylum": phylum.strip() if phylum and phylum.strip() else None,
+                    "class": class_name.strip() if class_name and class_name.strip() else None,
+                    "order": order.strip() if order and order.strip() else None,
+                    "family": family.strip() if family and family.strip() else None,
+                    "genus": genus.strip() if genus and genus.strip() else None,
+                })
+                st.success(f"✅ Successfully created species ID {next_id}!")
+                st.session_state.show_create_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error creating species: {str(e)}")
+
+
+def show_edit_form(species_id: int):
+    """Display form to edit an existing species."""
+    species_data = species_model.get_by_id(species_id)
+
+    if not species_data:
+        st.error("Species not found")
+        return
+
+    st.subheader(f"✏️ Edit Species {species_id}")
+
+    with st.form("edit_species_form"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            common_name = st.text_input(
+                "Common Name*",
+                value=species_data['common_name']
+            )
+
+            scientific_name = st.text_input(
+                "Scientific Name*",
+                value=species_data['scientific_name']
+            )
+
+            assemblage_options = [
+                "Birds",
+                "Butterflies",
+                "Fish",
+                "Mammals",
+                "Moths",
+                "Plants",
+                "Reptiles and amphibians",
+            ]
+            assemblage = st.selectbox(
+                "Assemblage*",
+                options=assemblage_options,
+                index=assemblage_options.index(species_data['assemblage']) if species_data['assemblage'] in assemblage_options else 0
+            )
+
+            taxa_options = ["Bird", "Butterfly", "Fish", "Mammal", "Moth", "Plant", "Reptile/Amphibian"]
+            taxa = st.selectbox(
+                "Taxa*",
+                options=taxa_options,
+                index=taxa_options.index(species_data['taxa']) if species_data['taxa'] in taxa_options else 0
+            )
+
+        with col2:
+            st.markdown("**Taxonomy (Optional)**")
+            kingdom = st.text_input("Kingdom", value=species_data.get('kingdom', '') or '')
+            phylum = st.text_input("Phylum", value=species_data.get('phylum', '') or '')
+            class_name = st.text_input("Class", value=species_data.get('class', '') or '')
+            order = st.text_input("Order", value=species_data.get('order', '') or '')
+            family = st.text_input("Family", value=species_data.get('family', '') or '')
+            genus = st.text_input("Genus", value=species_data.get('genus', '') or '')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Update Species", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_edit_form = False
+            st.rerun()
+
+        if submitted:
+            # Validate required fields
+            if not common_name or not common_name.strip():
+                st.error("❌ Common Name is required")
+                return
+
+            if not scientific_name or not scientific_name.strip():
+                st.error("❌ Scientific Name is required")
+                return
+
+            # Update species
+            try:
+                species_model.update(species_id, {
+                    "common_name": common_name.strip(),
+                    "scientific_name": scientific_name.strip(),
+                    "linnaean_name": scientific_name.strip(),
+                    "assemblage": assemblage,
+                    "taxa": taxa,
+                    "kingdom": kingdom.strip() if kingdom and kingdom.strip() else None,
+                    "phylum": phylum.strip() if phylum and phylum.strip() else None,
+                    "class": class_name.strip() if class_name and class_name.strip() else None,
+                    "order": order.strip() if order and order.strip() else None,
+                    "family": family.strip() if family and family.strip() else None,
+                    "genus": genus.strip() if genus and genus.strip() else None,
+                })
+                st.success(f"✅ Successfully updated species ID {species_id}!")
+                st.session_state.show_edit_form = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error updating species: {str(e)}")
+
+
+def show_delete_confirmation(species_id: int):
+    """Show confirmation dialog before deleting."""
+    species_data = species_model.get_by_id(species_id)
+    counts = species_model.get_relationship_counts(species_id)
+
+    st.warning(f"⚠️ Are you sure you want to delete this species?")
+
+    st.markdown(f"**Common Name:** {species_data['common_name']}")
+    st.markdown(f"**Scientific Name:** {species_data['scientific_name']}")
+    st.markdown(f"**Assemblage:** {species_data['assemblage']}")
+
+    # Show impact
+    total_relationships = sum(counts.values())
+    if total_relationships > 0:
+        st.error("**This will also delete the following relationships:**")
+        for relationship, count in counts.items():
+            if count > 0:
+                relationship_display = relationship.replace('_', ' ').title()
+                st.write(f"- {count} {relationship_display}")
+        st.write(f"\n**Total relationships to be removed: {total_relationships}**")
+    else:
+        st.info("This species has no relationships and can be safely deleted.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_delete_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Delete Species", type="primary", use_container_width=True):
+            try:
+                species_model.delete_with_cascade(species_id)
+                st.success(f"✅ Successfully deleted species ID {species_id}!")
+                st.session_state.show_delete_confirm = False
+                st.session_state.species_view = "list"
+                st.session_state.selected_species_id = None
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error deleting species: {str(e)}")
 
 
 def show_list_view():
     """Display list of all species with taxonomy."""
     st.title("🦋 Species")
+
+    # Create button
+    if st.button("➕ Create New Species", type="primary"):
+        st.session_state.show_create_form = True
+
+    # Show create form if requested
+    if st.session_state.show_create_form:
+        show_create_form()
+        st.markdown("---")
 
     total_count = species_model.count()
     st.info(f"**{total_count}** species with GBIF taxonomy data")
@@ -97,13 +344,37 @@ def show_detail_view():
     def back_to_list():
         st.session_state.species_view = "list"
         st.session_state.selected_species_id = None
+        st.session_state.show_edit_form = False
+        st.session_state.show_delete_confirm = False
 
-    st.title(f"🦋 {species_data['common_name']}")
+    st.title(f"🦋 Species Details")
 
-    # Back button
-    if st.button("← Back to List"):
-        back_to_list()
-        st.rerun()
+    # Action buttons
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        if st.button("← Back to List"):
+            back_to_list()
+            st.rerun()
+    with col2:
+        if st.button("✏️ Edit", use_container_width=True):
+            st.session_state.show_edit_form = True
+            st.session_state.show_delete_confirm = False
+    with col3:
+        if st.button("🗑️ Delete", use_container_width=True):
+            st.session_state.show_delete_confirm = True
+            st.session_state.show_edit_form = False
+
+    # Show edit form if requested
+    if st.session_state.show_edit_form:
+        st.markdown("---")
+        show_edit_form(species_id)
+        st.markdown("---")
+
+    # Show delete confirmation if requested
+    if st.session_state.show_delete_confirm:
+        st.markdown("---")
+        show_delete_confirmation(species_id)
+        st.markdown("---")
 
     # Display basic information
     st.subheader("Basic Information")
@@ -111,23 +382,15 @@ def show_detail_view():
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.markdown(f"**ID:** {species_data['species_id']}")
+        st.markdown(f"**Species ID:** {species_data['species_id']}")
         st.markdown(f"**Common Name:** {species_data['common_name']}")
         st.markdown(f"**Scientific Name:** {species_data['scientific_name']}")
-        st.markdown(f"**Linnaean Name:** {species_data['linnaean_name']}")
+        st.markdown(f"**Assemblage:** {species_data['assemblage']}")
+        st.markdown(f"**Taxa:** {species_data['taxa']}")
 
-        if species_data.get('assemblage'):
-            st.markdown(f"**Assemblage:** {species_data['assemblage']}")
-
-        if species_data.get('taxa'):
-            st.markdown(f"**Taxa:** {species_data['taxa']}")
-
-        st.markdown(f"**Status:** {species_data.get('status', 'N/A')}")
-
-        # Links
+        # Links if available
         if species_data.get('species_link'):
-            st.markdown(f"**Info:** [{species_data['species_link']}]({species_data['species_link']})")
-
+            st.markdown(f"**Info Link:** [{species_data['species_link']}]({species_data['species_link']})")
         if species_data.get('gbif_species_url'):
             st.markdown(f"**GBIF:** [{species_data['gbif_species_url']}]({species_data['gbif_species_url']})")
 
@@ -137,23 +400,20 @@ def show_detail_view():
         st.metric("Areas", counts['areas'])
         st.metric("Priorities", counts['priorities'])
 
-    # Display taxonomy
+    # Taxonomy section
     st.markdown("---")
     st.subheader("Taxonomy")
 
-    tax_col1, tax_col2, tax_col3 = st.columns(3)
-
-    with tax_col1:
-        st.markdown(f"**Kingdom:** {species_data.get('kingdom', 'N/A')}")
-        st.markdown(f"**Phylum:** {species_data.get('phylum', 'N/A')}")
-
-    with tax_col2:
-        st.markdown(f"**Class:** {species_data.get('class', 'N/A')}")
-        st.markdown(f"**Order:** {species_data.get('order', 'N/A')}")
-
-    with tax_col3:
-        st.markdown(f"**Family:** {species_data.get('family', 'N/A')}")
-        st.markdown(f"**Genus:** {species_data.get('genus', 'N/A')}")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"**Kingdom:** {species_data.get('kingdom') or '_Not provided_'}")
+        st.markdown(f"**Phylum:** {species_data.get('phylum') or '_Not provided_'}")
+    with col2:
+        st.markdown(f"**Class:** {species_data.get('class') or '_Not provided_'}")
+        st.markdown(f"**Order:** {species_data.get('order') or '_Not provided_'}")
+    with col3:
+        st.markdown(f"**Family:** {species_data.get('family') or '_Not provided_'}")
+        st.markdown(f"**Genus:** {species_data.get('genus') or '_Not provided_'}")
 
     # Display related data in tabs
     st.markdown("---")
