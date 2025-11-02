@@ -92,6 +92,9 @@ def show_detail_view():
     if st.button("← Back to List"):
         st.session_state.habitat_view = "list"
         st.session_state.selected_habitat_id = None
+        # Clear table selection state to prevent auto-reselection
+        if "habitat_table_selection" in st.session_state:
+            del st.session_state.habitat_table_selection
         st.rerun()
 
     # Display basic information
@@ -119,7 +122,7 @@ def show_detail_view():
         if len(creation_areas) > 0:
             st.dataframe(
                 creation_areas.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),
@@ -138,7 +141,7 @@ def show_detail_view():
         if len(management_areas) > 0:
             st.dataframe(
                 management_areas.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),

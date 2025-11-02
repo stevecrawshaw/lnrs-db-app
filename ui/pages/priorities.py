@@ -58,7 +58,7 @@ def show_list_view():
 
                 st.dataframe(
                     priorities_display.to_pandas(),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "priority_id": st.column_config.NumberColumn("ID", width="small"),
@@ -182,7 +182,7 @@ def show_detail_view():
         if len(related_measures) > 0:
             st.dataframe(
                 related_measures.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "measure_id": st.column_config.NumberColumn("ID", width="small"),
@@ -199,7 +199,7 @@ def show_detail_view():
         if len(related_areas) > 0:
             st.dataframe(
                 related_areas.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),
@@ -215,7 +215,7 @@ def show_detail_view():
         if len(related_species) > 0:
             st.dataframe(
                 related_species.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "species_id": st.column_config.NumberColumn("ID", width="small"),

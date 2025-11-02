@@ -81,31 +81,38 @@ def display_data_table(
             "ID", width="small", help=f"{entity_name} ID"
         )
 
-    st.dataframe(
-        df_pandas,
-        use_container_width=True,
-        hide_index=True,
-        column_config=column_config,
-    )
-
-    # Action buttons (if enabled and callback provided)
+    # Use row selection if actions are enabled
     if show_actions and on_view_details:
-        st.markdown("---")
-        st.markdown("##### Actions")
-        st.caption("Select a record ID to view details:")
+        # Make the instruction more prominent
+        st.info("👆 **Click on any row** to view full details", icon="ℹ️")
 
-        # ID selection
-        id_select_key = f"{entity_name}_id_select"
-        selected_id = st.number_input(
-            f"Enter {entity_name} ID",
-            min_value=int(df_pandas[id_column].min()),
-            max_value=int(df_pandas[id_column].max()),
-            key=id_select_key,
-            help=f"Enter the ID of the {entity_name} to view details",
+        selection_key = f"{entity_name}_table_selection"
+        event = st.dataframe(
+            df_pandas,
+            width="stretch",
+            hide_index=True,
+            column_config=column_config,
+            on_select="rerun",
+            selection_mode="single-row",
+            key=selection_key,
         )
 
-        if st.button(f"View Details", key=f"{entity_name}_view_btn"):
+        # Check if a row was selected
+        if event.selection.rows:
+            selected_row_idx = event.selection.rows[0]
+            selected_id = df_pandas.iloc[selected_row_idx][id_column]
+            # Convert numpy types to Python native types for DuckDB compatibility
+            selected_id = int(selected_id)
             on_view_details(selected_id)
+            st.rerun()
+    else:
+        # No actions, just display the table
+        st.dataframe(
+            df_pandas,
+            width="stretch",
+            hide_index=True,
+            column_config=column_config,
+        )
 
 
 def display_grouped_table(
@@ -136,7 +143,7 @@ def display_grouped_table(
 
             st.dataframe(
                 group_data.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -205,7 +212,7 @@ def display_detail_view(
                 if len(rel_data) > 0:
                     st.dataframe(
                         rel_data.to_pandas(),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                     st.caption(f"Total: {len(rel_data):,} records")
