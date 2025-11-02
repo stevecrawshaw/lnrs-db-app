@@ -908,10 +908,10 @@ except Exception as e:
 **Tasks**:
 - Create table display component (ui/components/tables.py)
 - Implement list views for all 6 core entities:
-  - Measures (use apmg_slim_vw)
+  - Measures (use measure)
   - Areas
   - Priorities (group by theme)
-  - Species (with images)
+  - Species
   - Grants
   - Habitats
 - Add search and filter components
