@@ -22,6 +22,7 @@ species_page = st.Page("ui/pages/species.py", title="Species", icon="🦋")
 grants_page = st.Page("ui/pages/grants.py", title="Grants", icon="💰")
 habitats_page = st.Page("ui/pages/habitats.py", title="Habitats", icon="🌳")
 relationships_page = st.Page("ui/pages/relationships.py", title="Relationships", icon="🔗")
+data_export_page = st.Page("ui/pages/data_export.py", title="Data Export", icon="📊")
 
 # Create navigation
 pg = st.navigation(
@@ -36,6 +37,7 @@ pg = st.navigation(
             habitats_page,
         ],
         "Relationships": [relationships_page],
+        "Export": [data_export_page],
     }
 )
 

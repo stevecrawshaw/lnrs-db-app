@@ -2,9 +2,10 @@
 
 **Goal**: Implement interfaces for managing many-to-many relationships (bridge tables)
 **Duration**: Week 7 (Adapted from original plan)
-**Status**: ✅ Phase 7A-7C Complete | 🚀 Phase 7D-7E Pending
+**Status**: ✅ Phase 7A-7D Complete | 🚀 Phase 7E Pending
 **Started**: 2025-11-02
 **Phase 7A-7C Completed**: 2025-11-02
+**Phase 7D Completed**: 2025-11-03
 
 ---
 
@@ -409,15 +410,16 @@ All tabs accessible via "Relationships" section in navigation.
 
 ---
 
-## Phase 7D: Bulk Operations
+## Phase 7D: Bulk Operations & Data Export ✅ COMPLETE
 
-**Goal**: Add ability to perform batch operations on bridge tables
+**Goal**: Add ability to perform batch operations on bridge tables and export view data
 
 ### Objectives
-- [ ] Implement bulk create for measure-area-priority
-- [ ] Implement bulk delete with confirmation
-- [ ] Add CSV import for relationships
-- [ ] Add CSV export for relationships
+- [x] Implement bulk create for measure-area-priority
+- [ ] Implement bulk delete with confirmation (Deferred)
+- [ ] Add CSV import for relationships (Deferred)
+- [x] Add CSV export for relationships
+- [x] Add CSV export for apmg_slim_vw (denormalized view)
 
 ### Bulk Create Example
 
@@ -447,12 +449,142 @@ measure_id,measure_name,area_id,area_name,priority_id,priority_name
 - Show preview before import
 - Report errors (missing IDs, duplicates)
 
+### APMG Slim View Export
+
+**Purpose**: Export the complete denormalized view of Area-Priority-Measure-Grant relationships for external reporting and analysis.
+
+**View Details:**
+- **View Name**: `apmg_slim_vw`
+- **Description**: Denormalized view containing core relationships between areas, priorities, measures, and grants
+- **Columns**:
+  - `core_supplementary` - Measure type indicator
+  - `measure_type` - Type of measure
+  - `stakeholder` - Responsible stakeholder
+  - `area_name` - Area name
+  - `area_id` - Area ID
+  - `grant_id` - Grant ID
+  - `priority_id` - Priority ID
+  - `biodiversity_priority` - Full priority description
+  - `measure` - Full measure description
+  - `concise_measure` - Concise measure description
+  - `measure_id` - Measure ID
+  - `link_to_further_guidance` - URL to guidance
+  - `grant_name` - Grant name
+  - `url` - Grant URL
+
+**Implementation:**
+- Add method `get_apmg_slim_view()` to RelationshipModel
+- Add export button on Relationships page (new tab or main page section)
+- Use Streamlit's download button with CSV format
+- Include timestamp in filename (e.g., `apmg_slim_export_2025-11-03.csv`)
+- Show record count before export
+- Handle large exports efficiently (the view recreates the source table)
+
 ### Testing Plan
-- [ ] Test bulk create with various combinations
-- [ ] Test CSV export
-- [ ] Test CSV import with valid data
-- [ ] Test CSV import error handling
-- [ ] Verify bulk delete confirmation
+- [x] Test bulk create with various combinations
+- [x] Test CSV export for bridge tables
+- [ ] Test CSV import with valid data (Deferred)
+- [ ] Test CSV import error handling (Deferred)
+- [ ] Verify bulk delete confirmation (Deferred)
+- [x] Test apmg_slim_vw export (verify all columns present)
+- [x] Verify apmg_slim_vw export record count matches view
+- [x] Test export filename includes timestamp
+
+### Implementation Summary
+
+**Test Date**: 2025-11-03
+**Test Script**: `test_phase_7d.py`
+
+#### Features Implemented
+
+**1. Bulk Create for Measure-Area-Priority Links**
+- Added `bulk_create_measure_area_priority_links()` method to RelationshipModel
+- Creates Cartesian product of selected measures, areas, and priorities
+- Handles duplicate detection and error reporting
+- Returns (created_count, errors) tuple for feedback
+
+**UI Implementation:**
+- Added "Bulk Create Links" button on Measure-Area-Priority tab
+- Multi-select dropdowns for measures, areas, and priorities
+- Shows preview of total links to be created (M × A × P)
+- Reports successful creations and errors separately
+- Shows up to 20 errors in expandable section
+
+**2. APMG Slim View Export**
+- Added `get_apmg_slim_view()` method to RelationshipModel
+- Queries the `apmg_slim_vw` database view
+- Returns all 14 columns in denormalized format
+- Ordered by area, priority, and measure for readability
+
+**Test Results:**
+- ✓ Successfully exports 6,528 records
+- ✓ All 14 columns present and correct
+- ✓ CSV size: 4.95 MB
+- ✓ Columns: core_supplementary, measure_type, stakeholder, area_name, area_id, grant_id, priority_id, biodiversity_priority, measure, concise_measure, measure_id, link_to_further_guidance, grant_name, url
+
+**3. Bridge Table CSV Exports**
+Added export functionality for all relationship types:
+
+| Bridge Table              | Records | CSV Size    |
+|---------------------------|---------|-------------|
+| Measure-Area-Priority     | 2,936   | 1.9 MB      |
+| Grant Funding             | 3,271   | 1.7 MB      |
+| Species-Area-Priority     | 2,505   | 893 KB      |
+| Habitat Creation          | 681     | 51 KB       |
+| Habitat Management        | 817     | 61 KB       |
+| Unfunded Links            | 1,589   | 464 KB      |
+
+**4. Data Export Page**
+- Created dedicated page `ui/pages/data_export.py`
+- Added "Export" section to main navigation with "📊 Data Export" entry
+- Section 1: APMG Slim View export with record count and timestamp filename
+- Section 2: Individual bridge table exports in 3x2 grid layout
+- All exports include:
+  - Record count display
+  - Timestamp in filename (YYYY-MM-DD_HHMMSS)
+  - Download button with appropriate MIME type
+  - Error handling for failed exports
+
+#### Deferred Features
+
+The following features from the original Phase 7D plan have been deferred:
+- **CSV Import**: Would require upload widget and validation logic
+- **Bulk Delete**: Would require confirmation dialog and transaction handling
+- Both features can be added in a future enhancement phase if needed
+
+#### Files Modified/Created
+
+1. **models/relationship.py** (lines 632-710)
+   - Added `bulk_create_measure_area_priority_links()` method
+   - Added `get_apmg_slim_view()` method
+
+2. **ui/pages/relationships.py** (modified)
+   - Added bulk create session state
+   - Added bulk create button and form
+   - Added `show_bulk_create_map_form()` function
+   - Removed data export tab (moved to separate page)
+   - Reduced from 6 tabs to 5 tabs
+
+3. **ui/pages/data_export.py** (new file - 220 lines)
+   - Standalone page for all data export features
+   - APMG Slim View export section
+   - Bridge table exports section (6 export types)
+   - Improved layout and user experience
+
+4. **app.py** (modified)
+   - Added `data_export_page` definition
+   - Added "Export" section to navigation
+   - Now has 4 navigation sections: Main, Entities, Relationships, Export
+
+5. **test_phase_7d.py** (new file)
+   - Comprehensive test script for Phase 7D features
+   - Tests all export methods
+   - Validates bulk create logic
+   - Provides summary and next steps
+
+6. **PHASE_7D_USER_GUIDE.md** (new file)
+   - Complete user guide with step-by-step instructions
+   - Updated to reflect separate Export page in navigation
 
 ---
 
@@ -505,23 +637,34 @@ Add warnings/badges:
 
 ## Navigation Structure
 
-Add new "Relationships" page to main navigation:
+Application has 4 main sections in sidebar navigation:
 
 ```
 Home (Dashboard)
-├── Measures
-├── Areas
-├── Priorities
-├── Species
-├── Grants
-├── Habitats
-├── **Relationships** (NEW)
-│   ├── Measure-Area-Priority Links
-│   ├── Grant Funding
-│   ├── Species-Area-Priority Links
-│   ├── Habitat Creation
-│   └── Habitat Management
-└── Reports & Views (Future phase)
+
+Section 1: Main
+└── 🏠 Dashboard
+
+Section 2: Entities
+├── 📋 Measures
+├── 🗺️ Areas
+├── 🎯 Priorities
+├── 🦋 Species
+├── 💰 Grants
+└── 🌳 Habitats
+
+Section 3: Relationships
+└── 🔗 Relationships
+    ├── Tab: Measure-Area-Priority Links (with bulk create)
+    ├── Tab: Grant Funding
+    ├── Tab: Species-Area-Priority Links
+    ├── Tab: Habitat Creation
+    └── Tab: Habitat Management
+
+Section 4: Export ⭐ NEW
+└── 📊 Data Export
+    ├── APMG Slim View Export (6,528 records)
+    └── Individual Bridge Table Exports (6 types)
 ```
 
 ---

@@ -1,6 +1,7 @@
 """Priorities page - View and manage biodiversity priorities."""
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -282,6 +283,22 @@ def show_list_view():
         all_priorities = all_priorities.with_columns(
             pl.col("theme").str.strip_chars().str.replace_all('\xa0', '')
         )
+
+        # Add semicolon-delimited CSV export button
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            filename = f"priorities_export_{timestamp}.csv"
+            csv_data = all_priorities.write_csv(separator=";")
+
+            st.download_button(
+                label="📥 CSV",
+                data=csv_data,
+                file_name=filename,
+                mime="text/csv",
+                use_container_width=True,
+                help="Export all priorities as CSV with semicolon delimiter (safer for text with commas)",
+            )
 
         def on_view_details(priority_id):
             st.session_state.selected_priority_id = priority_id

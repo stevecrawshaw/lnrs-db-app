@@ -8,4 +8,8 @@ SELECT COUNT() FROM lnrs_db.apmg_slim_vw;
 
 SELECT COUNT() FROM lnrs_db.measure;
 
+SELECT COUNT() FROM lnrs_db.apmg_slim_vw;
+
+SELECT COUNT() FROM lnrs_db.source_table_recreated_vw;
+
 .quit

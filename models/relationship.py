@@ -629,6 +629,86 @@ class RelationshipModel(BaseModel):
             print(f"Error deleting habitat management link: {e}")
             raise
 
+    # ============================================================================
+    # BULK OPERATIONS
+    # ============================================================================
+
+    def bulk_create_measure_area_priority_links(
+        self, measure_ids: list[int], area_ids: list[int], priority_ids: list[int]
+    ) -> tuple[int, list[str]]:
+        """Create multiple measure-area-priority links (Cartesian product).
+
+        Args:
+            measure_ids: List of measure IDs
+            area_ids: List of area IDs
+            priority_ids: List of priority IDs
+
+        Returns:
+            tuple: (number of links created, list of error messages)
+        """
+        created_count = 0
+        errors = []
+
+        # Generate all combinations (Cartesian product)
+        for measure_id in measure_ids:
+            for area_id in area_ids:
+                for priority_id in priority_ids:
+                    try:
+                        # Check if link already exists
+                        if not self.link_exists_measure_area_priority(
+                            measure_id, area_id, priority_id
+                        ):
+                            self.create_measure_area_priority_link(
+                                measure_id, area_id, priority_id
+                            )
+                            created_count += 1
+                        else:
+                            errors.append(
+                                f"Link already exists: M{measure_id}-A{area_id}-P{priority_id}"
+                            )
+                    except Exception as e:
+                        errors.append(
+                            f"Error creating M{measure_id}-A{area_id}-P{priority_id}: {str(e)}"
+                        )
+
+        return created_count, errors
+
+    # ============================================================================
+    # VIEW EXPORTS
+    # ============================================================================
+
+    def get_apmg_slim_view(self) -> pl.DataFrame:
+        """Get all data from apmg_slim_vw (Area-Priority-Measure-Grant slim view).
+
+        This view contains the core relationships between areas, priorities, measures,
+        and grants in a denormalized format suitable for export and reporting.
+
+        Returns:
+            pl.DataFrame: All data from the apmg_slim_vw view
+        """
+        query = """
+            SELECT
+                core_supplementary,
+                measure_type,
+                stakeholder,
+                area_name,
+                area_id,
+                grant_id,
+                priority_id,
+                biodiversity_priority,
+                measure,
+                concise_measure,
+                measure_id,
+                link_to_further_guidance,
+                grant_name,
+                url
+            FROM apmg_slim_vw
+            ORDER BY area_name, biodiversity_priority, measure_id
+        """
+
+        result = self.execute_raw_query(query)
+        return result.pl()
+
 
 # %%
 if __name__ == "__main__":

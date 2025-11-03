@@ -1,6 +1,7 @@
 """Measures page - View and manage biodiversity measures."""
 
 import sys
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -382,6 +383,22 @@ def show_list_view():
 
     # Get all measures with relationship counts
     all_measures = measure_model.get_with_relationship_counts()
+
+    # Add semicolon-delimited CSV export button
+    col1, col2 = st.columns([4, 1])
+    with col2:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"measures_export_{timestamp}.csv"
+        csv_data = all_measures.write_csv(separator=";")
+
+        st.download_button(
+            label="📥 CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            use_container_width=True,
+            help="Export all measures as CSV with semicolon delimiter (safer for text with commas)",
+        )
 
     def on_view_details(measure_id):
         st.session_state.selected_measure_id = measure_id

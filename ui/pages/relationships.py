@@ -31,6 +31,8 @@ habitat_model = HabitatModel()
 # Initialize session state for each relationship type
 if "show_create_map_form" not in st.session_state:
     st.session_state.show_create_map_form = False
+if "show_bulk_create_map_form" not in st.session_state:
+    st.session_state.show_bulk_create_map_form = False
 if "show_create_grant_form" not in st.session_state:
     st.session_state.show_create_grant_form = False
 if "show_create_species_form" not in st.session_state:
@@ -54,13 +56,23 @@ def show_measure_area_priority_interface():
         "area-priority combinations."
     )
 
-    # Create button
-    if st.button("➕ Create New Link", type="primary", key="create_map_btn"):
-        st.session_state.show_create_map_form = True
+    # Create buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("➕ Create New Link", type="primary", key="create_map_btn"):
+            st.session_state.show_create_map_form = True
+    with col2:
+        if st.button("➕➕ Bulk Create Links", key="bulk_create_map_btn"):
+            st.session_state.show_bulk_create_map_form = True
 
     # Show create form if requested
     if st.session_state.show_create_map_form:
         show_create_map_form()
+        st.markdown("---")
+
+    # Show bulk create form if requested
+    if st.session_state.show_bulk_create_map_form:
+        show_bulk_create_map_form()
         st.markdown("---")
 
     # Get all links
@@ -261,6 +273,118 @@ def show_create_map_form():
                 st.error(f"❌ {str(e)}")
             except Exception as e:
                 st.error(f"❌ Error creating link: {str(e)}")
+
+
+def show_bulk_create_map_form():
+    """Display form to bulk create measure-area-priority links."""
+    st.subheader("➕➕ Bulk Create Measure-Area-Priority Links")
+    st.info(
+        "Select multiple measures, areas, and priorities to create all possible "
+        "combinations (Cartesian product)."
+    )
+
+    # Get options for multi-select
+    all_measures = measure_model.get_all()
+    all_areas = area_model.get_all()
+    all_priorities = priority_model.get_all()
+
+    with st.form("bulk_create_map_form", clear_on_submit=True):
+        # Measure multi-select
+        measure_options = all_measures.select(["measure_id", "concise_measure"])
+        measure_display = {
+            f"{row['measure_id']} - {row['concise_measure'][:80]}": row["measure_id"]
+            for row in measure_options.iter_rows(named=True)
+        }
+        selected_measures = st.multiselect(
+            "Select Measures*",
+            options=list(measure_display.keys()),
+            help="Select one or more measures to link",
+        )
+
+        # Area multi-select
+        area_options = all_areas.select(["area_id", "area_name"])
+        area_display = {
+            f"{row['area_id']} - {row['area_name']}": row["area_id"]
+            for row in area_options.iter_rows(named=True)
+        }
+        selected_areas = st.multiselect(
+            "Select Areas*",
+            options=list(area_display.keys()),
+            help="Select one or more priority areas",
+        )
+
+        # Priority multi-select
+        priority_options = all_priorities.select(
+            ["priority_id", "simplified_biodiversity_priority", "theme"]
+        )
+        priority_display = {
+            f"{row['priority_id']} - [{row['theme']}] {row['simplified_biodiversity_priority']}": row[
+                "priority_id"
+            ]
+            for row in priority_options.iter_rows(named=True)
+        }
+        selected_priorities = st.multiselect(
+            "Select Priorities*",
+            options=list(priority_display.keys()),
+            help="Select one or more biodiversity priorities",
+        )
+
+        # Calculate total links that will be created
+        total_links = (
+            len(selected_measures) * len(selected_areas) * len(selected_priorities)
+        )
+        if total_links > 0:
+            st.warning(
+                f"⚠️ This will attempt to create **{total_links}** links "
+                f"({len(selected_measures)} measures × {len(selected_areas)} areas × "
+                f"{len(selected_priorities)} priorities)"
+            )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button(
+                f"Create {total_links} Links",
+                type="primary",
+                use_container_width=True,
+                disabled=(total_links == 0),
+            )
+        with col2:
+            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+
+        if cancelled:
+            st.session_state.show_bulk_create_map_form = False
+            st.rerun()
+
+        if submitted and total_links > 0:
+            # Parse IDs from selections
+            measure_ids = [measure_display[m] for m in selected_measures]
+            area_ids = [area_display[a] for a in selected_areas]
+            priority_ids = [priority_display[p] for p in selected_priorities]
+
+            # Create links
+            with st.spinner(f"Creating {total_links} links..."):
+                try:
+                    created_count, errors = (
+                        relationship_model.bulk_create_measure_area_priority_links(
+                            measure_ids, area_ids, priority_ids
+                        )
+                    )
+
+                    if created_count > 0:
+                        st.success(f"✅ Successfully created {created_count} links!")
+
+                    if errors:
+                        st.warning(f"⚠️ Encountered {len(errors)} issues:")
+                        with st.expander("Show errors"):
+                            for error in errors[:20]:  # Show first 20 errors
+                                st.text(error)
+                            if len(errors) > 20:
+                                st.text(f"... and {len(errors) - 20} more errors")
+
+                    st.session_state.show_bulk_create_map_form = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error during bulk create: {str(e)}")
 
 
 # ==============================================================================
