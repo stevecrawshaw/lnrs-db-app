@@ -485,6 +485,30 @@ def show_detail_view():
             st.session_state.show_delete_confirm = True
             st.session_state.show_edit_form = False
 
+    # Quick Actions section
+    st.markdown("---")
+    st.subheader("⚡ Quick Actions")
+
+    # Check for orphan status (measure not linked to any area)
+    is_orphan = counts['areas'] == 0
+
+    if is_orphan:
+        st.warning("⚠️ **This measure is not linked to any areas or priorities.** Use Quick Actions to create links.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔗 Link to Area/Priority", use_container_width=True, type="secondary"):
+            # Set session state to pre-fill the form on relationships page
+            st.session_state.quick_link_measure_id = measure_id
+            st.session_state.quick_link_action = "create_map"
+            st.switch_page("ui/pages/relationships.py")
+
+    with col2:
+        if st.button("👁️ View All Links", use_container_width=True, type="secondary"):
+            # Navigate to relationships page filtered for this measure
+            st.session_state.filter_measure_id = measure_id
+            st.switch_page("ui/pages/relationships.py")
+
     # Show edit form if requested
     if st.session_state.show_edit_form:
         st.markdown("---")

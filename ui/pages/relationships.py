@@ -42,6 +42,21 @@ if "show_create_habitat_creation_form" not in st.session_state:
 if "show_create_habitat_management_form" not in st.session_state:
     st.session_state.show_create_habitat_management_form = False
 
+# Quick Link navigation handling
+if "quick_link_action" in st.session_state and st.session_state.quick_link_action:
+    action = st.session_state.quick_link_action
+
+    # Handle different quick link actions
+    if action == "create_map":
+        st.session_state.show_create_map_form = True
+    elif action == "create_species":
+        st.session_state.show_create_species_form = True
+    elif action == "create_habitat":
+        st.session_state.show_create_habitat_creation_form = True
+
+    # Clear the quick link action after handling
+    st.session_state.quick_link_action = None
+
 
 # ==============================================================================
 # TAB 1: MEASURE-AREA-PRIORITY RELATIONSHIPS
@@ -195,6 +210,28 @@ def show_measure_area_priority_interface():
 def show_create_map_form():
     """Display form to create a new measure-area-priority link."""
     st.subheader("➕ Create New Measure-Area-Priority Link")
+
+    # Show context if coming from Quick Link
+    if "quick_link_measure_id" in st.session_state and st.session_state.quick_link_measure_id:
+        measure_id = st.session_state.quick_link_measure_id
+        measure_data = measure_model.get_by_id(measure_id)
+        if measure_data:
+            st.info(f"🔗 **Linking from Measure {measure_id}**: {measure_data.get('concise_measure', '')[:100]}")
+        st.session_state.quick_link_measure_id = None
+
+    if "quick_link_area_id" in st.session_state and st.session_state.quick_link_area_id:
+        area_id = st.session_state.quick_link_area_id
+        area_data = area_model.get_by_id(area_id)
+        if area_data:
+            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+        st.session_state.quick_link_area_id = None
+
+    if "quick_link_priority_id" in st.session_state and st.session_state.quick_link_priority_id:
+        priority_id = st.session_state.quick_link_priority_id
+        priority_data = priority_model.get_by_id(priority_id)
+        if priority_data:
+            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_data.get('simplified_biodiversity_priority', '')}")
+        st.session_state.quick_link_priority_id = None
 
     # Get options for dropdowns
     all_measures = measure_model.get_all()
@@ -626,6 +663,21 @@ def show_create_species_form():
     """Display form to create a new species-area-priority link."""
     st.subheader("➕ Create New Species-Area-Priority Link")
 
+    # Show context if coming from Quick Link
+    if "quick_link_area_id" in st.session_state and st.session_state.quick_link_area_id:
+        area_id = st.session_state.quick_link_area_id
+        area_data = area_model.get_by_id(area_id)
+        if area_data:
+            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+        st.session_state.quick_link_area_id = None
+
+    if "quick_link_priority_id" in st.session_state and st.session_state.quick_link_priority_id:
+        priority_id = st.session_state.quick_link_priority_id
+        priority_data = priority_model.get_by_id(priority_id)
+        if priority_data:
+            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_data.get('simplified_biodiversity_priority', '')}")
+        st.session_state.quick_link_priority_id = None
+
     # Get options
     all_species = species_model.get_all()
     all_areas = area_model.get_all()
@@ -754,6 +806,14 @@ def show_habitat_creation_interface():
 def show_create_habitat_creation_form():
     """Display form to create a new habitat-creation-area link."""
     st.subheader("➕ Create New Habitat Creation Link")
+
+    # Show context if coming from Quick Link
+    if "quick_link_area_id" in st.session_state and st.session_state.quick_link_area_id:
+        area_id = st.session_state.quick_link_area_id
+        area_data = area_model.get_by_id(area_id)
+        if area_data:
+            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+        st.session_state.quick_link_area_id = None
 
     all_habitats = habitat_model.get_all()
     all_areas = area_model.get_all()
