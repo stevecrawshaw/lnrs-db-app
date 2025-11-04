@@ -132,29 +132,6 @@ try:
 except Exception as e:
     st.error(f"Error loading relationship statistics: {e}")
 
-# Recent activity / Quick actions
-st.subheader("Quick Actions")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("#### View Data")
-    st.markdown("- Browse Measures")
-    st.markdown("- Explore Areas")
-    st.markdown("- View Priorities")
-
-with col2:
-    st.markdown("#### Add New")
-    st.markdown("- Create Measure")
-    st.markdown("- Add Area")
-    st.markdown("- Define Priority")
-
-with col3:
-    st.markdown("#### Reports")
-    st.markdown("- Export Data")
-    st.markdown("- View Statistics")
-    st.markdown("- Generate Reports")
-
 # Info section
 st.markdown("---")
 st.info(

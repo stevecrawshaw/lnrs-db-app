@@ -240,9 +240,9 @@ def show_create_map_form():
 
     with st.form("create_map_form", clear_on_submit=True):
         # Measure selection
-        measure_options = all_measures.select(["measure_id", "concise_measure"])
+        measure_options = all_measures.select(["measure_id", "concise_measure", "measure"])
         measure_display = [
-            f"{row['measure_id']} - {row['concise_measure'][:80]}"
+            f"{row['measure_id']} - {row['concise_measure'] or row['measure'][:80]}"
             for row in measure_options.iter_rows(named=True)
         ]
         selected_measure = st.selectbox(
@@ -327,9 +327,9 @@ def show_bulk_create_map_form():
 
     with st.form("bulk_create_map_form", clear_on_submit=True):
         # Measure multi-select
-        measure_options = all_measures.select(["measure_id", "concise_measure"])
+        measure_options = all_measures.select(["measure_id", "concise_measure", "measure"])
         measure_display = {
-            f"{row['measure_id']} - {row['concise_measure'][:80]}": row["measure_id"]
+            f"{row['measure_id']} - {row['concise_measure'] or row['measure'][:80]}": row["measure_id"]
             for row in measure_options.iter_rows(named=True)
         }
         selected_measures = st.multiselect(
