@@ -11,8 +11,8 @@ import streamlit as st
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from models.priority import PriorityModel
-from ui.components.tables import display_data_table
+from models.priority import PriorityModel  # noqa: E402
+from ui.components.tables import display_data_table  # noqa: E402
 
 # Initialize model
 priority_model = PriorityModel()
@@ -38,12 +38,11 @@ def show_create_form():
         biodiversity_priority = st.text_area(
             "Biodiversity Priority*",
             help="Full description of the biodiversity priority (required)",
-            height=100
+            height=100,
         )
 
         simplified_priority = st.text_input(
-            "Simplified Priority",
-            help="Optional simplified version"
+            "Simplified Priority", help="Optional simplified version"
         )
 
         theme = st.selectbox(
@@ -54,14 +53,16 @@ def show_create_form():
                 "Marine",
                 "Wetlands, rivers and floodplains",
                 "Woodland",
-                "All habitats"
+                "All habitats",
             ],
-            help="Select the theme category (required)"
+            help="Select the theme category (required)",
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Create Priority", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Create Priority", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -80,17 +81,24 @@ def show_create_form():
                 return
 
             # Get next priority_id
-            max_id = priority_model.execute_raw_query("SELECT MAX(priority_id) FROM priority").fetchone()[0]
+            result = priority_model.execute_raw_query(
+                "SELECT MAX(priority_id) FROM priority"
+            ).fetchone()
+            max_id = result[0] if result else None
             next_id = (max_id or 0) + 1
 
             # Create priority
             try:
-                priority_model.create({
-                    "priority_id": next_id,
-                    "biodiversity_priority": biodiversity_priority.strip(),
-                    "simplified_biodiversity_priority": simplified_priority.strip() if simplified_priority else None,
-                    "theme": theme
-                })
+                priority_model.create(
+                    {
+                        "priority_id": next_id,
+                        "biodiversity_priority": biodiversity_priority.strip(),
+                        "simplified_biodiversity_priority": simplified_priority.strip()
+                        if simplified_priority
+                        else None,
+                        "theme": theme,
+                    }
+                )
                 st.success(f"✅ Successfully created priority ID {next_id}!")
                 st.session_state.show_create_form = False
                 st.rerun()
@@ -111,13 +119,13 @@ def show_edit_form(priority_id: int):
     with st.form("edit_priority_form"):
         biodiversity_priority = st.text_area(
             "Biodiversity Priority*",
-            value=priority_data['biodiversity_priority'],
-            height=100
+            value=priority_data["biodiversity_priority"],
+            height=100,
         )
 
         simplified_priority = st.text_input(
             "Simplified Priority",
-            value=priority_data.get('simplified_biodiversity_priority', '') or ''
+            value=priority_data.get("simplified_biodiversity_priority", "") or "",
         )
 
         theme = st.selectbox(
@@ -128,7 +136,7 @@ def show_edit_form(priority_id: int):
                 "Marine",
                 "Wetlands, rivers and floodplains",
                 "Woodland",
-                "All habitats"
+                "All habitats",
             ],
             index=[
                 "Grassland and farmland",
@@ -136,20 +144,25 @@ def show_edit_form(priority_id: int):
                 "Marine",
                 "Wetlands, rivers and floodplains",
                 "Woodland",
-                "All habitats"
-            ].index(priority_data['theme'].strip()) if priority_data['theme'].strip() in [
+                "All habitats",
+            ].index(priority_data["theme"].strip())
+            if priority_data["theme"].strip()
+            in [
                 "Grassland and farmland",
                 "Heathland and moorland",
                 "Marine",
                 "Wetlands, rivers and floodplains",
                 "Woodland",
-                "All habitats"
-            ] else 0
+                "All habitats",
+            ]
+            else 0,
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Update Priority", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Update Priority", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -165,11 +178,16 @@ def show_edit_form(priority_id: int):
 
             # Update priority
             try:
-                priority_model.update(priority_id, {
-                    "biodiversity_priority": biodiversity_priority.strip(),
-                    "simplified_biodiversity_priority": simplified_priority.strip() if simplified_priority else None,
-                    "theme": theme
-                })
+                priority_model.update(
+                    priority_id,
+                    {
+                        "biodiversity_priority": biodiversity_priority.strip(),
+                        "simplified_biodiversity_priority": simplified_priority.strip()
+                        if simplified_priority
+                        else None,
+                        "theme": theme,
+                    },
+                )
                 st.success(f"✅ Successfully updated priority ID {priority_id}!")
                 st.session_state.show_edit_form = False
                 st.rerun()
@@ -180,9 +198,14 @@ def show_edit_form(priority_id: int):
 def show_delete_confirmation(priority_id: int):
     """Show confirmation dialog before deleting."""
     priority_data = priority_model.get_by_id(priority_id)
+
+    if not priority_data:
+        st.error(f"Priority ID {priority_id} not found")
+        return
+
     counts = priority_model.get_relationship_counts(priority_id)
 
-    st.warning(f"⚠️ Are you sure you want to delete this priority?")
+    st.warning("⚠️ Are you sure you want to delete this priority?")
 
     st.markdown(f"**Priority:** {priority_data['biodiversity_priority'][:100]}...")
     st.markdown(f"**Theme:** {priority_data['theme']}")
@@ -245,25 +268,29 @@ def show_list_view():
 
         for theme, priorities in by_theme.items():
             # Clean theme name (remove non-breaking spaces and other whitespace)
-            clean_theme = theme.strip().replace('\xa0', '')
+            clean_theme = theme.strip().replace("\xa0", "")
 
             with st.expander(
                 f"**{clean_theme}** ({len(priorities)} priorities)",
                 expanded=True,
             ):
                 # Display priorities in this theme
-                priorities_display = priorities.select([
-                    "priority_id",
-                    "biodiversity_priority",
-                    "simplified_biodiversity_priority",
-                ])
+                priorities_display = priorities.select(
+                    [
+                        "priority_id",
+                        "biodiversity_priority",
+                        "simplified_biodiversity_priority",
+                    ]
+                )
 
                 st.dataframe(
                     priorities_display.to_pandas(),
                     width="stretch",
                     hide_index=True,
                     column_config={
-                        "priority_id": st.column_config.NumberColumn("ID", width="small"),
+                        "priority_id": st.column_config.NumberColumn(
+                            "ID", width="small"
+                        ),
                         "biodiversity_priority": st.column_config.TextColumn(
                             "Biodiversity Priority", width="large"
                         ),
@@ -272,7 +299,7 @@ def show_list_view():
                         ),
                     },
                     on_select="rerun",
-                    selection_mode="single-row"
+                    selection_mode="single-row",
                 )
 
     else:
@@ -281,11 +308,11 @@ def show_list_view():
 
         # Clean theme names in the dataframe
         all_priorities = all_priorities.with_columns(
-            pl.col("theme").str.strip_chars().str.replace_all('\xa0', '')
+            pl.col("theme").str.strip_chars().str.replace_all("\xa0", "")
         )
 
         # Add semicolon-delimited CSV export button
-        col1, col2 = st.columns([4, 1])
+        _, col2 = st.columns([4, 1])
         with col2:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
             filename = f"priorities_export_{timestamp}.csv"
@@ -297,7 +324,10 @@ def show_list_view():
                 file_name=filename,
                 mime="text/csv",
                 use_container_width=True,
-                help="Export all priorities as CSV with semicolon delimiter (safer for text with commas)",
+                help=(
+                    "Export all priorities as CSV with semicolon delimiter "
+                    "(safer for text with commas)"
+                ),
             )
 
         def on_view_details(priority_id):
@@ -309,7 +339,11 @@ def show_list_view():
             title="All Priorities",
             entity_name="priority",
             id_column="priority_id",
-            searchable_columns=["biodiversity_priority", "simplified_biodiversity_priority", "theme"],
+            searchable_columns=[
+                "biodiversity_priority",
+                "simplified_biodiversity_priority",
+                "theme",
+            ],
             column_config={
                 "priority_id": st.column_config.NumberColumn("ID", width="small"),
                 "biodiversity_priority": st.column_config.TextColumn(
@@ -361,10 +395,10 @@ def show_detail_view():
         st.session_state.show_edit_form = False
         st.session_state.show_delete_confirm = False
 
-    st.title(f"🎯 Priority Details")
+    st.title("🎯 Priority Details")
 
     # Action buttons
-    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    col1, col2, col3, _ = st.columns([2, 1, 1, 1])
     with col1:
         if st.button("← Back to List"):
             back_to_list()
@@ -383,10 +417,13 @@ def show_detail_view():
     st.subheader("⚡ Quick Actions")
 
     # Check for orphan status (priority not linked to any measures)
-    is_orphan = counts['measures'] == 0
+    is_orphan = counts["measures"] == 0
 
     if is_orphan:
-        st.warning("⚠️ **This priority has no linked measures.** Use Quick Actions to create links.")
+        st.warning(
+            "⚠️ **This priority has no linked measures.** "
+            "Use Quick Actions to create links."
+        )
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -429,23 +466,23 @@ def show_detail_view():
     with col1:
         st.markdown(f"**ID:** {priority_data['priority_id']}")
         # Clean theme name for display
-        clean_theme = priority_data['theme'].strip().replace('\xa0', '')
+        clean_theme = priority_data["theme"].strip().replace("\xa0", "")
         st.markdown(f"**Theme:** {clean_theme}")
         st.markdown("**Biodiversity Priority:**")
-        st.info(priority_data['biodiversity_priority'])
+        st.info(priority_data["biodiversity_priority"])
 
     with col2:
         st.markdown("**Simplified:**")
-        if priority_data['simplified_biodiversity_priority']:
-            st.write(priority_data['simplified_biodiversity_priority'])
+        if priority_data["simplified_biodiversity_priority"]:
+            st.write(priority_data["simplified_biodiversity_priority"])
         else:
             st.caption("_Not provided_")
 
         st.markdown("---")
         st.markdown("**Relationship Counts:**")
-        st.metric("Measures", counts['measures'])
-        st.metric("Areas", counts['areas'])
-        st.metric("Species", counts['species'])
+        st.metric("Measures", counts["measures"])
+        st.metric("Areas", counts["areas"])
+        st.metric("Species", counts["species"])
 
     # Display related data in tabs
     st.markdown("---")
@@ -462,8 +499,12 @@ def show_detail_view():
                 column_config={
                     "measure_id": st.column_config.NumberColumn("ID", width="small"),
                     "measure": st.column_config.TextColumn("Measure", width="large"),
-                    "concise_measure": st.column_config.TextColumn("Concise", width="medium"),
-                    "core_supplementary": st.column_config.TextColumn("Type", width="small"),
+                    "concise_measure": st.column_config.TextColumn(
+                        "Concise", width="medium"
+                    ),
+                    "core_supplementary": st.column_config.TextColumn(
+                        "Type", width="small"
+                    ),
                 },
             )
             st.caption(f"Total: {len(related_measures):,} measures")
@@ -478,8 +519,12 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),
-                    "area_name": st.column_config.TextColumn("Area Name", width="medium"),
-                    "area_description": st.column_config.TextColumn("Description", width="large"),
+                    "area_name": st.column_config.TextColumn(
+                        "Area Name", width="medium"
+                    ),
+                    "area_description": st.column_config.TextColumn(
+                        "Description", width="large"
+                    ),
                 },
             )
             st.caption(f"Total: {len(related_areas):,} areas")
@@ -494,9 +539,15 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "species_id": st.column_config.NumberColumn("ID", width="small"),
-                    "common_name": st.column_config.TextColumn("Common Name", width="medium"),
-                    "linnaean_name": st.column_config.TextColumn("Scientific Name", width="medium"),
-                    "assemblage": st.column_config.TextColumn("Assemblage", width="medium"),
+                    "common_name": st.column_config.TextColumn(
+                        "Common Name", width="medium"
+                    ),
+                    "linnaean_name": st.column_config.TextColumn(
+                        "Scientific Name", width="medium"
+                    ),
+                    "assemblage": st.column_config.TextColumn(
+                        "Assemblage", width="medium"
+                    ),
                 },
             )
             st.caption(f"Total: {len(related_species):,} species")

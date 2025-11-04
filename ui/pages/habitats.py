@@ -9,8 +9,8 @@ import streamlit as st
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from models.habitat import HabitatModel
-from ui.components.tables import display_data_table
+from models.habitat import HabitatModel  # noqa: E402
+from ui.components.tables import display_data_table  # noqa: E402
 
 # Initialize model
 habitat_model = HabitatModel()
@@ -40,7 +40,9 @@ def show_create_form():
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Create Habitat", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Create Habitat", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -55,15 +57,17 @@ def show_create_form():
                 return
 
             # Get next habitat_id
-            max_id = habitat_model.execute_raw_query("SELECT MAX(habitat_id) FROM habitat").fetchone()[0]
+            result = habitat_model.execute_raw_query(
+                "SELECT MAX(habitat_id) FROM habitat"
+            ).fetchone()
+            max_id = result[0] if result else None
             next_id = (max_id or 0) + 1
 
             # Create habitat
             try:
-                habitat_model.create({
-                    "habitat_id": next_id,
-                    "habitat": habitat.strip()
-                })
+                habitat_model.create(
+                    {"habitat_id": next_id, "habitat": habitat.strip()}
+                )
                 st.success(f"✅ Successfully created habitat ID {next_id}!")
                 st.session_state.show_create_form = False
                 st.rerun()
@@ -82,14 +86,13 @@ def show_edit_form(habitat_id: int):
     st.subheader(f"✏️ Edit Habitat {habitat_id}")
 
     with st.form("edit_habitat_form"):
-        habitat = st.text_input(
-            "Habitat Type*",
-            value=habitat_data['habitat']
-        )
+        habitat = st.text_input("Habitat Type*", value=habitat_data["habitat"])
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Update Habitat", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Update Habitat", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -105,9 +108,7 @@ def show_edit_form(habitat_id: int):
 
             # Update habitat
             try:
-                habitat_model.update(habitat_id, {
-                    "habitat": habitat.strip()
-                })
+                habitat_model.update(habitat_id, {"habitat": habitat.strip()})
                 st.success(f"✅ Successfully updated habitat ID {habitat_id}!")
                 st.session_state.show_edit_form = False
                 st.rerun()
@@ -118,9 +119,14 @@ def show_edit_form(habitat_id: int):
 def show_delete_confirmation(habitat_id: int):
     """Show confirmation dialog before deleting."""
     habitat_data = habitat_model.get_by_id(habitat_id)
+
+    if not habitat_data:
+        st.error(f"Habitat ID {habitat_id} not found")
+        return
+
     counts = habitat_model.get_relationship_counts(habitat_id)
 
-    st.warning(f"⚠️ Are you sure you want to delete this habitat?")
+    st.warning("⚠️ Are you sure you want to delete this habitat?")
 
     st.markdown(f"**Habitat:** {habitat_data['habitat']}")
 
@@ -130,7 +136,7 @@ def show_delete_confirmation(habitat_id: int):
         st.error("**This will also delete the following relationships:**")
         for relationship, count in counts.items():
             if count > 0:
-                relationship_display = relationship.replace('_', ' ').title()
+                relationship_display = relationship.replace("_", " ").title()
                 st.write(f"- {count} {relationship_display}")
         st.write(f"\n**Total relationships to be removed: {total_relationships}**")
     else:
@@ -234,7 +240,7 @@ def show_detail_view():
         st.session_state.show_edit_form = False
         st.session_state.show_delete_confirm = False
 
-    st.title(f"🌳 Habitat Details")
+    st.title("🌳 Habitat Details")
 
     # Action buttons
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -271,7 +277,7 @@ def show_detail_view():
     with col1:
         st.markdown(f"**Habitat ID:** {habitat_data['habitat_id']}")
         st.markdown("**Habitat Type:**")
-        st.info(habitat_data['habitat'])
+        st.info(habitat_data["habitat"])
 
     with col2:
         st.markdown("**Area Counts:**")
@@ -293,7 +299,9 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),
-                    "area_name": st.column_config.TextColumn("Area Name", width="medium"),
+                    "area_name": st.column_config.TextColumn(
+                        "Area Name", width="medium"
+                    ),
                     "area_description": st.column_config.TextColumn(
                         "Description", width="large"
                     ),
@@ -312,7 +320,9 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "area_id": st.column_config.NumberColumn("ID", width="small"),
-                    "area_name": st.column_config.TextColumn("Area Name", width="medium"),
+                    "area_name": st.column_config.TextColumn(
+                        "Area Name", width="medium"
+                    ),
                     "area_description": st.column_config.TextColumn(
                         "Description", width="large"
                     ),

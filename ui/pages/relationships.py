@@ -10,14 +10,13 @@ import streamlit as st
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from models.area import AreaModel
-from models.grant import GrantModel
-from models.habitat import HabitatModel
-from models.measure import MeasureModel
-from models.priority import PriorityModel
-from models.relationship import RelationshipModel
-from models.species import SpeciesModel
-from ui.components.tables import display_data_table
+from models.area import AreaModel  # noqa: E402
+from models.grant import GrantModel  # noqa: E402
+from models.habitat import HabitatModel  # noqa: E402
+from models.measure import MeasureModel  # noqa: E402
+from models.priority import PriorityModel  # noqa: E402
+from models.relationship import RelationshipModel  # noqa: E402
+from models.species import SpeciesModel  # noqa: E402
 
 # Initialize models
 relationship_model = RelationshipModel()
@@ -103,14 +102,16 @@ def show_measure_area_priority_interface():
 
     with col1:
         # Filter by theme (filter out None values)
-        themes = sorted([t for t in all_links["theme"].unique().to_list() if t is not None])
+        unique_themes = all_links["theme"].unique().to_list()
+        themes = sorted([t for t in unique_themes if t is not None])
         selected_theme = st.selectbox(
             "Filter by Theme", ["All"] + themes, key="map_theme_filter"
         )
 
     with col2:
         # Filter by area (filter out None values)
-        areas = sorted([a for a in all_links["area_name"].unique().to_list() if a is not None])
+        unique_areas = all_links["area_name"].unique().to_list()
+        areas = sorted([a for a in unique_areas if a is not None])
         selected_area = st.selectbox(
             "Filter by Area", ["All"] + areas, key="map_area_filter"
         )
@@ -132,7 +133,9 @@ def show_measure_area_priority_interface():
 
     if search_term:
         filtered_links = filtered_links.filter(
-            pl.col("concise_measure").str.to_lowercase().str.contains(search_term.lower())
+            pl.col("concise_measure")
+            .str.to_lowercase()
+            .str.contains(search_term.lower())
             | pl.col("measure").str.to_lowercase().str.contains(search_term.lower())
         )
 
@@ -140,13 +143,15 @@ def show_measure_area_priority_interface():
 
     # Display table with actions
     if len(filtered_links) > 0:
-        display_df = filtered_links.select([
-            "measure_id",
-            "concise_measure",
-            "area_name",
-            "simplified_biodiversity_priority",
-            "theme",
-        ])
+        display_df = filtered_links.select(
+            [
+                "measure_id",
+                "concise_measure",
+                "area_name",
+                "simplified_biodiversity_priority",
+                "theme",
+            ]
+        )
 
         # Add delete functionality
         st.dataframe(
@@ -154,8 +159,12 @@ def show_measure_area_priority_interface():
             use_container_width=True,
             hide_index=True,
             column_config={
-                "measure_id": st.column_config.NumberColumn("Measure ID", width="small"),
-                "concise_measure": st.column_config.TextColumn("Measure", width="large"),
+                "measure_id": st.column_config.NumberColumn(
+                    "Measure ID", width="small"
+                ),
+                "concise_measure": st.column_config.TextColumn(
+                    "Measure", width="large"
+                ),
                 "area_name": st.column_config.TextColumn("Area", width="medium"),
                 "simplified_biodiversity_priority": st.column_config.TextColumn(
                     "Priority", width="medium"
@@ -194,10 +203,12 @@ def show_measure_area_priority_interface():
                         relationship_model.delete_measure_area_priority_link(
                             delete_measure_id, delete_area_id, delete_priority_id
                         )
-                        st.success(
-                            f"✅ Successfully deleted link: Measure {delete_measure_id} - "
-                            f"Area {delete_area_id} - Priority {delete_priority_id}"
+                        success_msg = (
+                            f"✅ Successfully deleted link: Measure "
+                            f"{delete_measure_id} - Area {delete_area_id} - "
+                            f"Priority {delete_priority_id}"
                         )
+                        st.success(success_msg)
                         st.rerun()
                     else:
                         st.error("❌ Link does not exist")
@@ -212,25 +223,35 @@ def show_create_map_form():
     st.subheader("➕ Create New Measure-Area-Priority Link")
 
     # Show context if coming from Quick Link
-    if "quick_link_measure_id" in st.session_state and st.session_state.quick_link_measure_id:
+    if (
+        "quick_link_measure_id" in st.session_state
+        and st.session_state.quick_link_measure_id
+    ):
         measure_id = st.session_state.quick_link_measure_id
         measure_data = measure_model.get_by_id(measure_id)
         if measure_data:
-            st.info(f"🔗 **Linking from Measure {measure_id}**: {measure_data.get('concise_measure', '')[:100]}")
+            measure_name = measure_data.get("concise_measure", "")[:100]
+            st.info(f"🔗 **Linking from Measure {measure_id}**: {measure_name}")
         st.session_state.quick_link_measure_id = None
 
     if "quick_link_area_id" in st.session_state and st.session_state.quick_link_area_id:
         area_id = st.session_state.quick_link_area_id
         area_data = area_model.get_by_id(area_id)
         if area_data:
-            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+            st.info(
+                f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}"
+            )
         st.session_state.quick_link_area_id = None
 
-    if "quick_link_priority_id" in st.session_state and st.session_state.quick_link_priority_id:
+    if (
+        "quick_link_priority_id" in st.session_state
+        and st.session_state.quick_link_priority_id
+    ):
         priority_id = st.session_state.quick_link_priority_id
         priority_data = priority_model.get_by_id(priority_id)
         if priority_data:
-            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_data.get('simplified_biodiversity_priority', '')}")
+            priority_name = priority_data.get("simplified_biodiversity_priority", "")
+            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_name}")
         st.session_state.quick_link_priority_id = None
 
     # Get options for dropdowns
@@ -240,7 +261,9 @@ def show_create_map_form():
 
     with st.form("create_map_form", clear_on_submit=True):
         # Measure selection
-        measure_options = all_measures.select(["measure_id", "concise_measure", "measure"])
+        measure_options = all_measures.select(
+            ["measure_id", "concise_measure", "measure"]
+        )
         measure_display = [
             f"{row['measure_id']} - {row['concise_measure'] or row['measure'][:80]}"
             for row in measure_options.iter_rows(named=True)
@@ -268,7 +291,10 @@ def show_create_map_form():
             ["priority_id", "simplified_biodiversity_priority", "theme"]
         )
         priority_display = [
-            f"{row['priority_id']} - [{row['theme']}] {row['simplified_biodiversity_priority']}"
+            (
+                f"{row['priority_id']} - [{row['theme']}] "
+                f"{row['simplified_biodiversity_priority']}"
+            )
             for row in priority_options.iter_rows(named=True)
         ]
         selected_priority = st.selectbox(
@@ -327,9 +353,13 @@ def show_bulk_create_map_form():
 
     with st.form("bulk_create_map_form", clear_on_submit=True):
         # Measure multi-select
-        measure_options = all_measures.select(["measure_id", "concise_measure", "measure"])
+        measure_options = all_measures.select(
+            ["measure_id", "concise_measure", "measure"]
+        )
         measure_display = {
-            f"{row['measure_id']} - {row['concise_measure'] or row['measure'][:80]}": row["measure_id"]
+            (
+                f"{row['measure_id']} - {row['concise_measure'] or row['measure'][:80]}"
+            ): row["measure_id"]
             for row in measure_options.iter_rows(named=True)
         }
         selected_measures = st.multiselect(
@@ -355,9 +385,10 @@ def show_bulk_create_map_form():
             ["priority_id", "simplified_biodiversity_priority", "theme"]
         )
         priority_display = {
-            f"{row['priority_id']} - [{row['theme']}] {row['simplified_biodiversity_priority']}": row[
-                "priority_id"
-            ]
+            (
+                f"{row['priority_id']} - [{row['theme']}] "
+                f"{row['simplified_biodiversity_priority']}"
+            ): row["priority_id"]
             for row in priority_options.iter_rows(named=True)
         }
         selected_priorities = st.multiselect(
@@ -461,7 +492,9 @@ def show_grant_funding_interface():
 
     if len(grant_links) > 0:
         # Filter by grant scheme (filter out None values)
-        schemes = sorted([s for s in grant_links["grant_scheme"].unique().to_list() if s is not None])
+        schemes = sorted(
+            [s for s in grant_links["grant_scheme"].unique().to_list() if s is not None]
+        )
         selected_scheme = st.selectbox(
             "Filter by Grant Scheme", ["All"] + schemes, key="grant_scheme_filter"
         )
@@ -474,23 +507,29 @@ def show_grant_funding_interface():
 
         st.info(f"Showing {len(filtered_grants):,} of {len(grant_links):,} grant links")
 
-        display_df = filtered_grants.select([
-            "measure_id",
-            "concise_measure",
-            "area_name",
-            "simplified_biodiversity_priority",
-            "grant_name",
-            "grant_scheme",
-            "url",
-        ])
+        display_df = filtered_grants.select(
+            [
+                "measure_id",
+                "concise_measure",
+                "area_name",
+                "simplified_biodiversity_priority",
+                "grant_name",
+                "grant_scheme",
+                "url",
+            ]
+        )
 
         st.dataframe(
             display_df.to_pandas(),
             use_container_width=True,
             hide_index=True,
             column_config={
-                "measure_id": st.column_config.NumberColumn("Measure ID", width="small"),
-                "concise_measure": st.column_config.TextColumn("Measure", width="medium"),
+                "measure_id": st.column_config.NumberColumn(
+                    "Measure ID", width="small"
+                ),
+                "concise_measure": st.column_config.TextColumn(
+                    "Measure", width="medium"
+                ),
                 "area_name": st.column_config.TextColumn("Area", width="small"),
                 "simplified_biodiversity_priority": st.column_config.TextColumn(
                     "Priority", width="medium"
@@ -618,7 +657,9 @@ def show_species_area_priority_interface():
             [a for a in species_links["assemblage"].unique().to_list() if a]
         )
         selected_assemblage = st.selectbox(
-            "Filter by Assemblage", ["All"] + assemblages, key="species_assemblage_filter"
+            "Filter by Assemblage",
+            ["All"] + assemblages,
+            key="species_assemblage_filter",
         )
 
         filtered_links = species_links.clone()
@@ -629,15 +670,17 @@ def show_species_area_priority_interface():
 
         st.info(f"Showing {len(filtered_links):,} of {len(species_links):,} links")
 
-        display_df = filtered_links.select([
-            "species_id",
-            "common_name",
-            "linnaean_name",
-            "assemblage",
-            "area_name",
-            "simplified_biodiversity_priority",
-            "theme",
-        ])
+        display_df = filtered_links.select(
+            [
+                "species_id",
+                "common_name",
+                "linnaean_name",
+                "assemblage",
+                "area_name",
+                "simplified_biodiversity_priority",
+                "theme",
+            ]
+        )
 
         st.dataframe(
             display_df.to_pandas(),
@@ -645,8 +688,12 @@ def show_species_area_priority_interface():
             hide_index=True,
             column_config={
                 "species_id": st.column_config.NumberColumn("ID", width="small"),
-                "common_name": st.column_config.TextColumn("Common Name", width="medium"),
-                "linnaean_name": st.column_config.TextColumn("Scientific", width="medium"),
+                "common_name": st.column_config.TextColumn(
+                    "Common Name", width="medium"
+                ),
+                "linnaean_name": st.column_config.TextColumn(
+                    "Scientific", width="medium"
+                ),
                 "assemblage": st.column_config.TextColumn("Assemblage", width="small"),
                 "area_name": st.column_config.TextColumn("Area", width="medium"),
                 "simplified_biodiversity_priority": st.column_config.TextColumn(
@@ -668,14 +715,20 @@ def show_create_species_form():
         area_id = st.session_state.quick_link_area_id
         area_data = area_model.get_by_id(area_id)
         if area_data:
-            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+            st.info(
+                f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}"
+            )
         st.session_state.quick_link_area_id = None
 
-    if "quick_link_priority_id" in st.session_state and st.session_state.quick_link_priority_id:
+    if (
+        "quick_link_priority_id" in st.session_state
+        and st.session_state.quick_link_priority_id
+    ):
         priority_id = st.session_state.quick_link_priority_id
         priority_data = priority_model.get_by_id(priority_id)
         if priority_data:
-            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_data.get('simplified_biodiversity_priority', '')}")
+            priority_name = priority_data.get("simplified_biodiversity_priority", "")
+            st.info(f"🔗 **Linking from Priority {priority_id}**: {priority_name}")
         st.session_state.quick_link_priority_id = None
 
     # Get options
@@ -685,7 +738,9 @@ def show_create_species_form():
 
     with st.form("create_species_form", clear_on_submit=True):
         # Species selection
-        species_options = all_species.select(["species_id", "common_name", "linnaean_name"])
+        species_options = all_species.select(
+            ["species_id", "common_name", "linnaean_name"]
+        )
         species_display = [
             f"{row['species_id']} - {row['common_name']} ({row['linnaean_name']})"
             for row in species_options.iter_rows(named=True)
@@ -709,13 +764,14 @@ def show_create_species_form():
         )
 
         # Priority selection
-        priority_options = all_priorities.select([
-            "priority_id",
-            "simplified_biodiversity_priority",
-            "theme"
-        ])
+        priority_options = all_priorities.select(
+            ["priority_id", "simplified_biodiversity_priority", "theme"]
+        )
         priority_display = [
-            f"{row['priority_id']} - [{row['theme']}] {row['simplified_biodiversity_priority']}"
+            (
+                f"{row['priority_id']} - [{row['theme']}] "
+                f"{row['simplified_biodiversity_priority']}"
+            )
             for row in priority_options.iter_rows(named=True)
         ]
         selected_priority = st.selectbox(
@@ -793,7 +849,9 @@ def show_habitat_creation_interface():
             use_container_width=True,
             hide_index=True,
             column_config={
-                "habitat_id": st.column_config.NumberColumn("Habitat ID", width="small"),
+                "habitat_id": st.column_config.NumberColumn(
+                    "Habitat ID", width="small"
+                ),
                 "habitat": st.column_config.TextColumn("Habitat Type", width="large"),
                 "area_id": st.column_config.NumberColumn("Area ID", width="small"),
                 "area_name": st.column_config.TextColumn("Area", width="medium"),
@@ -812,7 +870,9 @@ def show_create_habitat_creation_form():
         area_id = st.session_state.quick_link_area_id
         area_data = area_model.get_by_id(area_id)
         if area_data:
-            st.info(f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}")
+            st.info(
+                f"🔗 **Linking from Area {area_id}**: {area_data.get('area_name', '')}"
+            )
         st.session_state.quick_link_area_id = None
 
     all_habitats = habitat_model.get_all()
@@ -904,7 +964,9 @@ def show_habitat_management_interface():
             use_container_width=True,
             hide_index=True,
             column_config={
-                "habitat_id": st.column_config.NumberColumn("Habitat ID", width="small"),
+                "habitat_id": st.column_config.NumberColumn(
+                    "Habitat ID", width="small"
+                ),
                 "habitat": st.column_config.TextColumn("Habitat Type", width="large"),
                 "area_id": st.column_config.NumberColumn("Area ID", width="small"),
                 "area_name": st.column_config.TextColumn("Area", width="medium"),
@@ -989,13 +1051,15 @@ st.markdown(
 )
 
 # Create tabs for different relationship types
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "Measure-Area-Priority",
-    "Grant Funding",
-    "Species-Area-Priority",
-    "Habitat Creation",
-    "Habitat Management",
-])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    [
+        "Measure-Area-Priority",
+        "Grant Funding",
+        "Species-Area-Priority",
+        "Habitat Creation",
+        "Habitat Management",
+    ]
+)
 
 with tab1:
     show_measure_area_priority_interface()

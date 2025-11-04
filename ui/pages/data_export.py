@@ -239,8 +239,8 @@ with export_col6:
 st.markdown("---")
 st.info(
     """
-    **💡 Tip**: All exported files include timestamps in their filenames (YYYY-MM-DD_HHMMSS)
-    to prevent overwrites and track versions. CSV files can be opened in Excel, Google Sheets,
-    or any data analysis tool.
+    **💡 Tip**: All exported files include timestamps
+    in their filenames (YYYY-MM-DD_HHMMSS)
+    to prevent overwrites and track versions.
     """
 )

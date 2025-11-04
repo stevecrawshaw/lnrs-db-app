@@ -27,7 +27,9 @@ def get_database_counts():
         "species": db.get_table_count("species"),
         "grant_table": db.get_table_count("grant_table"),
         "measure_area_priority": db.get_table_count("measure_area_priority"),
-        "measure_area_priority_grant": db.get_table_count("measure_area_priority_grant"),
+        "measure_area_priority_grant": db.get_table_count(
+            "measure_area_priority_grant"
+        ),
         "species_area_priority": db.get_table_count("species_area_priority"),
     }
 
@@ -139,7 +141,7 @@ st.info(
     **About this application:**
 
     This CRUD application manages the LNRS (Local Nature Recovery Strategy) database,
-    which contains biodiversity measures, priority areas, species data, and grant information.
+    which contains biodiversity priorities, areas, species data, and grant information.
 
     Use the navigation menu on the left to access different sections of the application.
     """

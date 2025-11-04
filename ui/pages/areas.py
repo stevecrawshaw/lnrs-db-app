@@ -5,15 +5,14 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-import polars as pl
 import streamlit as st
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from models.area import AreaModel
-from ui.components.tables import display_data_table
+from models.area import AreaModel  # noqa: E402
+from ui.components.tables import display_data_table  # noqa: E402
 
 # Initialize model
 area_model = AreaModel()
@@ -64,7 +63,7 @@ def show_create_form():
         area_description = st.text_area(
             "Area Description*",
             help="Description of the area and its biodiversity significance (required)",
-            height=150
+            height=150,
         )
 
         area_link = st.text_input(
@@ -74,7 +73,9 @@ def show_create_form():
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Create Area", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Create Area", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -98,19 +99,26 @@ def show_create_form():
                 return
 
             # Get next area_id
-            max_id = area_model.execute_raw_query("SELECT MAX(area_id) FROM area").fetchone()[0]
+            result = area_model.execute_raw_query(
+                "SELECT MAX(area_id) FROM area"
+            ).fetchone()
+            max_id = result[0] if result else None
             next_id = (max_id or 0) + 1
 
             # Create area
             try:
-                area_model.create({
-                    "area_id": next_id,
-                    "area_name": area_name.strip(),
-                    "area_description": area_description.strip(),
-                    "area_link": area_link.strip() if area_link and area_link.strip() else None,
-                    "bng_hab_mgt": None,
-                    "bng_hab_creation": None,
-                })
+                area_model.create(
+                    {
+                        "area_id": next_id,
+                        "area_name": area_name.strip(),
+                        "area_description": area_description.strip(),
+                        "area_link": area_link.strip()
+                        if area_link and area_link.strip()
+                        else None,
+                        "bng_hab_mgt": None,
+                        "bng_hab_creation": None,
+                    }
+                )
                 st.success(f"✅ Successfully created area ID {next_id}!")
                 st.session_state.show_create_form = False
                 st.rerun()
@@ -129,25 +137,21 @@ def show_edit_form(area_id: int):
     st.subheader(f"✏️ Edit Area {area_id}")
 
     with st.form("edit_area_form"):
-        area_name = st.text_input(
-            "Area Name*",
-            value=area_data['area_name']
-        )
+        area_name = st.text_input("Area Name*", value=area_data["area_name"])
 
         area_description = st.text_area(
-            "Area Description*",
-            value=area_data['area_description'],
-            height=150
+            "Area Description*", value=area_data["area_description"], height=150
         )
 
         area_link = st.text_input(
-            "Area Link",
-            value=area_data.get('area_link', '') or ''
+            "Area Link", value=area_data.get("area_link", "") or ""
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Update Area", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Update Area", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -172,11 +176,16 @@ def show_edit_form(area_id: int):
 
             # Update area
             try:
-                area_model.update(area_id, {
-                    "area_name": area_name.strip(),
-                    "area_description": area_description.strip(),
-                    "area_link": area_link.strip() if area_link and area_link.strip() else None,
-                })
+                area_model.update(
+                    area_id,
+                    {
+                        "area_name": area_name.strip(),
+                        "area_description": area_description.strip(),
+                        "area_link": area_link.strip()
+                        if area_link and area_link.strip()
+                        else None,
+                    },
+                )
                 st.success(f"✅ Successfully updated area ID {area_id}!")
                 st.session_state.show_edit_form = False
                 st.rerun()
@@ -187,9 +196,14 @@ def show_edit_form(area_id: int):
 def show_delete_confirmation(area_id: int):
     """Show confirmation dialog before deleting."""
     area_data = area_model.get_by_id(area_id)
+
+    if not area_data:
+        st.error(f"Area ID {area_id} not found")
+        return
+
     counts = area_model.get_relationship_counts(area_id)
 
-    st.warning(f"⚠️ Are you sure you want to delete this area?")
+    st.warning("⚠️ Are you sure you want to delete this area?")
 
     st.markdown(f"**Area:** {area_data['area_name']}")
     st.markdown(f"**Description:** {area_data['area_description'][:100]}...")
@@ -200,10 +214,13 @@ def show_delete_confirmation(area_id: int):
         st.error("**This will also delete the following relationships:**")
         for relationship, count in counts.items():
             if count > 0:
-                relationship_display = relationship.replace('_', ' ').title()
+                relationship_display = relationship.replace("_", " ").title()
                 st.write(f"- {count} {relationship_display}")
         st.write(f"\n**Total relationships to be removed: {total_relationships}**")
-        st.warning("⚠️ **This is a MAJOR deletion!** This area has many relationships. Consider carefully before proceeding.")
+        st.warning(
+            "⚠️ **This is a MAJOR deletion!** This area has many "
+            "relationships. Consider carefully before proceeding."
+        )
     else:
         st.info("This area has no relationships and can be safely deleted.")
 
@@ -245,7 +262,7 @@ def show_list_view():
     areas_with_counts = area_model.get_with_relationship_counts()
 
     # Add semicolon-delimited CSV export button
-    col1, col2 = st.columns([4, 1])
+    _, col2 = st.columns([4, 1])
     with col2:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         filename = f"areas_export_{timestamp}.csv"
@@ -257,7 +274,10 @@ def show_list_view():
             file_name=filename,
             mime="text/csv",
             use_container_width=True,
-            help="Export all areas as CSV with semicolon delimiter (safer for text with commas)",
+            help=(
+                "Export all areas as CSV with semicolon delimiter "
+                "(safer for text with commas)"
+            ),
         )
 
     def on_view_details(area_id):
@@ -273,13 +293,19 @@ def show_list_view():
         column_config={
             "area_id": st.column_config.NumberColumn("ID", width="small"),
             "area_name": st.column_config.TextColumn("Area Name", width="medium"),
-            "area_description": st.column_config.TextColumn("Description", width="large"),
+            "area_description": st.column_config.TextColumn(
+                "Description", width="large"
+            ),
             "area_link": st.column_config.LinkColumn("Link", width="small"),
             "measures": st.column_config.NumberColumn("Measures", width="small"),
             "priorities": st.column_config.NumberColumn("Priorities", width="small"),
             "species": st.column_config.NumberColumn("Species", width="small"),
-            "creation_habitats": st.column_config.NumberColumn("Creation", width="small"),
-            "management_habitats": st.column_config.NumberColumn("Management", width="small"),
+            "creation_habitats": st.column_config.NumberColumn(
+                "Creation", width="small"
+            ),
+            "management_habitats": st.column_config.NumberColumn(
+                "Management", width="small"
+            ),
             "funding_schemes": st.column_config.NumberColumn("Funding", width="small"),
         },
         show_actions=True,
@@ -348,10 +374,12 @@ def show_detail_view():
     st.subheader("⚡ Quick Actions")
 
     # Check for orphan status (area not linked to any measures)
-    is_orphan = counts['measures'] == 0
+    is_orphan = counts["measures"] == 0
 
     if is_orphan:
-        st.warning("⚠️ **This area has no linked measures.** Use Quick Actions to create links.")
+        st.warning(
+            "⚠️ **This area has no linked measures.** Use Quick Actions to create links."
+        )
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -395,32 +423,36 @@ def show_detail_view():
     with col1:
         st.markdown(f"**ID:** {area_data['area_id']}")
         st.markdown("**Description:**")
-        st.info(area_data['area_description'])
+        st.info(area_data["area_description"])
 
-        if area_data.get('area_link'):
-            st.markdown(f"**Link:** [{area_data['area_link']}]({area_data['area_link']})")
+        if area_data.get("area_link"):
+            st.markdown(
+                f"**Link:** [{area_data['area_link']}]({area_data['area_link']})"
+            )
 
     with col2:
         st.markdown("**Relationship Counts:**")
-        st.metric("Measures", counts['measures'])
-        st.metric("Priorities", counts['priorities'])
-        st.metric("Species", counts['species'])
-        st.metric("Creation Habitats", counts['creation_habitats'])
-        st.metric("Management Habitats", counts['management_habitats'])
-        st.metric("Funding Schemes", counts['funding_schemes'])
+        st.metric("Measures", counts["measures"])
+        st.metric("Priorities", counts["priorities"])
+        st.metric("Species", counts["species"])
+        st.metric("Creation Habitats", counts["creation_habitats"])
+        st.metric("Management Habitats", counts["management_habitats"])
+        st.metric("Funding Schemes", counts["funding_schemes"])
 
     # Display related data in tabs
     st.markdown("---")
     st.subheader("Related Data")
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "Measures",
-        "Priorities",
-        "Species",
-        "Creation Habitats",
-        "Management Habitats",
-        "Funding Schemes"
-    ])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        [
+            "Measures",
+            "Priorities",
+            "Species",
+            "Creation Habitats",
+            "Management Habitats",
+            "Funding Schemes",
+        ]
+    )
 
     with tab1:
         if len(related_measures) > 0:
@@ -431,8 +463,12 @@ def show_detail_view():
                 column_config={
                     "measure_id": st.column_config.NumberColumn("ID", width="small"),
                     "measure": st.column_config.TextColumn("Measure", width="large"),
-                    "concise_measure": st.column_config.TextColumn("Concise", width="medium"),
-                    "core_supplementary": st.column_config.TextColumn("Type", width="small"),
+                    "concise_measure": st.column_config.TextColumn(
+                        "Concise", width="medium"
+                    ),
+                    "core_supplementary": st.column_config.TextColumn(
+                        "Type", width="small"
+                    ),
                 },
             )
             st.caption(f"Total: {len(related_measures):,} measures")
@@ -468,9 +504,15 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "species_id": st.column_config.NumberColumn("ID", width="small"),
-                    "common_name": st.column_config.TextColumn("Common Name", width="medium"),
-                    "linnaean_name": st.column_config.TextColumn("Scientific Name", width="medium"),
-                    "assemblage": st.column_config.TextColumn("Assemblage", width="medium"),
+                    "common_name": st.column_config.TextColumn(
+                        "Common Name", width="medium"
+                    ),
+                    "linnaean_name": st.column_config.TextColumn(
+                        "Scientific Name", width="medium"
+                    ),
+                    "assemblage": st.column_config.TextColumn(
+                        "Assemblage", width="medium"
+                    ),
                     "usage_key": st.column_config.TextColumn("GBIF Key", width="small"),
                 },
             )
@@ -486,10 +528,14 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "habitat_id": st.column_config.NumberColumn("ID", width="small"),
-                    "habitat": st.column_config.TextColumn("Habitat Type", width="large"),
+                    "habitat": st.column_config.TextColumn(
+                        "Habitat Type", width="large"
+                    ),
                 },
             )
-            st.caption(f"Total: {len(creation_habitats):,} habitats designated for creation")
+            st.caption(
+                f"Total: {len(creation_habitats):,} habitats designated for creation"
+            )
         else:
             st.info("No habitats designated for creation in this area.")
 
@@ -501,10 +547,14 @@ def show_detail_view():
                 hide_index=True,
                 column_config={
                     "habitat_id": st.column_config.NumberColumn("ID", width="small"),
-                    "habitat": st.column_config.TextColumn("Habitat Type", width="large"),
+                    "habitat": st.column_config.TextColumn(
+                        "Habitat Type", width="large"
+                    ),
                 },
             )
-            st.caption(f"Total: {len(management_habitats):,} habitats requiring management")
+            st.caption(
+                f"Total: {len(management_habitats):,} habitats requiring management"
+            )
         else:
             st.info("No habitats requiring management in this area.")
 
@@ -517,7 +567,9 @@ def show_detail_view():
                 column_config={
                     "id": st.column_config.NumberColumn("ID", width="small"),
                     "area_name": st.column_config.TextColumn("Area", width="medium"),
-                    "local_funding_schemes": st.column_config.TextColumn("Funding Schemes", width="large"),
+                    "local_funding_schemes": st.column_config.TextColumn(
+                        "Funding Schemes", width="large"
+                    ),
                 },
             )
             st.caption(f"Total: {len(funding_schemes):,} funding schemes")

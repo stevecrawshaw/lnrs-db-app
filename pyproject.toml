@@ -13,3 +13,8 @@ dependencies = [
     "sqlfluff>=3.5.0",
     "streamlit>=1.50.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.3",
+]

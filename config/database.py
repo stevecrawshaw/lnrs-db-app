@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 # Try to import streamlit for secrets (only available when running in Streamlit)
 try:
     import streamlit as st
+
     HAS_STREAMLIT = True
 except ImportError:
     HAS_STREAMLIT = False
@@ -147,7 +148,8 @@ class DatabaseConnection:
             )
 
         try:
-            # MotherDuck connection string format: md:database_name?motherduck_token=TOKEN
+            # MotherDuck connection string format:
+            # md:database_name?motherduck_token=TOKEN
             connection_string = f"md:{database_name}?motherduck_token={token}"
             connection = duckdb.connect(connection_string)
             print(f"[OK] Connected to MOTHERDUCK database: {database_name}")
@@ -231,7 +233,7 @@ class DatabaseConnection:
 
     def execute_query(
         self, query: str, parameters: list[Any] | None = None
-    ) -> duckdb.DuckDBPyRelation:
+    ) -> duckdb.DuckDBPyConnection:
         """Execute a SQL query with optional parameters.
 
         Args:
@@ -239,7 +241,8 @@ class DatabaseConnection:
             parameters: Optional list of parameters for parameterized queries
 
         Returns:
-            duckdb.DuckDBPyRelation: Query result
+            duckdb.DuckDBPyConnection: Connection object with query result
+                (supports method chaining)
 
         Raises:
             duckdb.Error: If query execution fails
@@ -301,7 +304,7 @@ class DatabaseConnection:
         try:
             conn = self.get_connection()
             result = conn.execute("SELECT 1 as test").fetchone()
-            return result[0] == 1
+            return result is not None and result[0] == 1
         except Exception as e:
             print(f"Connection test failed: {e}")
             return False
@@ -316,8 +319,13 @@ class DatabaseConnection:
             int: Number of records in the table
         """
         try:
-            result = self.execute_query(f"SELECT COUNT(*) FROM {table_name}")
-            return result.fetchone()[0]
+            # Use parameterized query to prevent SQL injection
+            # Note: Table names can't be parameterized, but we quote them
+            result = self.execute_query(
+                f'SELECT COUNT(*) FROM "{table_name}"'  # noqa: S608
+            )
+            row = result.fetchone()
+            return row[0] if row is not None else 0
         except duckdb.Error:
             return 0
 
@@ -349,14 +357,18 @@ if __name__ == "__main__":
 
     # Test connection
     print("\n2. Testing connection...")
-    assert db.test_connection(), "Connection test failed"
+    if not db.test_connection():
+        raise RuntimeError("Connection test failed")
     print("   ✓ Connection test passed")
 
     # Test macro loading
     print("\n3. Testing macro loading...")
     conn = db.get_connection()
     result = conn.execute("SELECT max_meas() as next_id").fetchone()
-    print(f"   ✓ max_meas() returned: {result[0]}")
+    if result is not None:
+        print(f"   ✓ max_meas() returned: {result[0]}")
+    else:
+        print("   ✗ max_meas() returned no result")
 
     # Test basic query
     print("\n4. Testing basic query...")
@@ -367,7 +379,8 @@ if __name__ == "__main__":
     print("\n5. Testing relational API...")
     measures = db.get_table("measure")
     limited_measures = measures.limit(5)
-    print(f"   ✓ Retrieved {len(limited_measures.fetchall())} measures using relational API")
+    count = len(limited_measures.fetchall())
+    print(f"   ✓ Retrieved {count} measures using relational API")
 
     # Test transaction
     print("\n6. Testing transaction...")

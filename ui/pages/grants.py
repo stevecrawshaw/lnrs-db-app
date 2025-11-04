@@ -10,8 +10,8 @@ import streamlit as st
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from models.grant import GrantModel
-from ui.components.tables import display_data_table
+from models.grant import GrantModel  # noqa: E402
+from ui.components.tables import display_data_table  # noqa: E402
 
 # Initialize model
 grant_model = GrantModel()
@@ -75,14 +75,14 @@ def show_create_form():
         )
 
         grant_summary = st.text_area(
-            "Grant Summary",
-            help="Optional summary of the grant",
-            height=100
+            "Grant Summary", help="Optional summary of the grant", height=100
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Create Grant", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Create Grant", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -105,26 +105,34 @@ def show_create_form():
                 return
 
             # Validate URL if provided
-            if url and url.strip():
-                if not validate_url(url):
-                    st.error("❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)")
-                    return
+            if url and url.strip() and not validate_url(url):
+                st.error(
+                    "❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)"
+                )
+                return
 
             # Check if grant_id already exists
             existing = grant_model.get_by_id(grant_id.strip())
             if existing:
-                st.error(f"❌ Grant ID '{grant_id.strip()}' already exists. Please use a different ID.")
+                st.error(
+                    f"❌ Grant ID '{grant_id.strip()}' already exists. "
+                    "Please use a different ID."
+                )
                 return
 
             # Create grant
             try:
-                grant_model.create({
-                    "grant_id": grant_id.strip(),
-                    "grant_name": grant_name.strip(),
-                    "grant_scheme": grant_scheme.strip(),
-                    "url": url.strip() if url and url.strip() else None,
-                    "grant_summary": grant_summary.strip() if grant_summary and grant_summary.strip() else None
-                })
+                grant_model.create(
+                    {
+                        "grant_id": grant_id.strip(),
+                        "grant_name": grant_name.strip(),
+                        "grant_scheme": grant_scheme.strip(),
+                        "url": url.strip() if url and url.strip() else None,
+                        "grant_summary": grant_summary.strip()
+                        if grant_summary and grant_summary.strip()
+                        else None,
+                    }
+                )
                 st.success(f"✅ Successfully created grant '{grant_id.strip()}'!")
                 st.session_state.show_create_form = False
                 st.rerun()
@@ -143,30 +151,21 @@ def show_edit_form(grant_id: str):
     st.subheader(f"✏️ Edit Grant {grant_id}")
 
     with st.form("edit_grant_form"):
-        grant_name = st.text_input(
-            "Grant Name*",
-            value=grant_data['grant_name']
-        )
+        grant_name = st.text_input("Grant Name*", value=grant_data["grant_name"])
 
-        grant_scheme = st.text_input(
-            "Grant Scheme*",
-            value=grant_data['grant_scheme']
-        )
+        grant_scheme = st.text_input("Grant Scheme*", value=grant_data["grant_scheme"])
 
-        url = st.text_input(
-            "URL",
-            value=grant_data.get('url', '') or ''
-        )
+        url = st.text_input("URL", value=grant_data.get("url", "") or "")
 
         grant_summary = st.text_area(
-            "Grant Summary",
-            value=grant_data.get('grant_summary', '') or '',
-            height=100
+            "Grant Summary", value=grant_data.get("grant_summary", "") or "", height=100
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Update Grant", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Update Grant", type="primary", use_container_width=True
+            )
         with col2:
             cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -185,19 +184,25 @@ def show_edit_form(grant_id: str):
                 return
 
             # Validate URL if provided
-            if url and url.strip():
-                if not validate_url(url):
-                    st.error("❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)")
-                    return
+            if url and url.strip() and not validate_url(url):
+                st.error(
+                    "❌ Invalid URL format. Please provide a valid URL (e.g., https://example.com)"
+                )
+                return
 
             # Update grant
             try:
-                grant_model.update(grant_id, {
-                    "grant_name": grant_name.strip(),
-                    "grant_scheme": grant_scheme.strip(),
-                    "url": url.strip() if url and url.strip() else None,
-                    "grant_summary": grant_summary.strip() if grant_summary and grant_summary.strip() else None
-                })
+                grant_model.update(
+                    grant_id,
+                    {
+                        "grant_name": grant_name.strip(),
+                        "grant_scheme": grant_scheme.strip(),
+                        "url": url.strip() if url and url.strip() else None,
+                        "grant_summary": grant_summary.strip()
+                        if grant_summary and grant_summary.strip()
+                        else None,
+                    },
+                )
                 st.success(f"✅ Successfully updated grant '{grant_id}'!")
                 st.session_state.show_edit_form = False
                 st.rerun()
@@ -208,9 +213,14 @@ def show_edit_form(grant_id: str):
 def show_delete_confirmation(grant_id: str):
     """Show confirmation dialog before deleting."""
     grant_data = grant_model.get_by_id(grant_id)
+
+    if not grant_data:
+        st.error(f"Grant ID {grant_id} not found")
+        return
+
     counts = grant_model.get_relationship_counts(grant_id)
 
-    st.warning(f"⚠️ Are you sure you want to delete this grant?")
+    st.warning("⚠️ Are you sure you want to delete this grant?")
 
     st.markdown(f"**Grant ID:** {grant_data['grant_id']}")
     st.markdown(f"**Grant Name:** {grant_data['grant_name']}")
@@ -222,7 +232,7 @@ def show_delete_confirmation(grant_id: str):
         st.error("**This will also delete the following relationships:**")
         for relationship, count in counts.items():
             if count > 0:
-                relationship_display = relationship.replace('_', ' ').title()
+                relationship_display = relationship.replace("_", " ").title()
                 st.write(f"- {count} {relationship_display}")
         st.write(f"\n**Total relationships to be removed: {total_relationships}**")
     else:
@@ -279,12 +289,14 @@ def show_list_view():
                 expanded=True,
             ):
                 # Display grants in this scheme
-                grants_display = grants.select([
-                    "grant_id",
-                    "grant_name",
-                    "url",
-                    "grant_summary",
-                ])
+                grants_display = grants.select(
+                    [
+                        "grant_id",
+                        "grant_name",
+                        "url",
+                        "grant_summary",
+                    ]
+                )
 
                 st.dataframe(
                     grants_display.to_pandas(),
@@ -292,9 +304,13 @@ def show_list_view():
                     hide_index=True,
                     column_config={
                         "grant_id": st.column_config.TextColumn("ID", width="small"),
-                        "grant_name": st.column_config.TextColumn("Grant Name", width="medium"),
+                        "grant_name": st.column_config.TextColumn(
+                            "Grant Name", width="medium"
+                        ),
                         "url": st.column_config.LinkColumn("URL", width="medium"),
-                        "grant_summary": st.column_config.TextColumn("Summary", width="large"),
+                        "grant_summary": st.column_config.TextColumn(
+                            "Summary", width="large"
+                        ),
                     },
                 )
 
@@ -355,7 +371,7 @@ def show_detail_view():
         st.session_state.show_edit_form = False
         st.session_state.show_delete_confirm = False
 
-    st.title(f"💰 Grant Details")
+    st.title("💰 Grant Details")
 
     # Action buttons
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -393,7 +409,7 @@ def show_detail_view():
         st.markdown(f"**Grant ID:** {grant_data['grant_id']}")
         st.markdown(f"**Grant Name:** {grant_data['grant_name']}")
         st.markdown(f"**Scheme:** {grant_data['grant_scheme']}")
-        if grant_data['url']:
+        if grant_data["url"]:
             st.markdown(f"**URL:** [{grant_data['url']}]({grant_data['url']})")
         else:
             st.markdown("**URL:** _Not provided_")
@@ -402,9 +418,9 @@ def show_detail_view():
         st.markdown("**Relationship Counts:**")
         st.metric("Funded Measure Links", len(related_measures))
 
-    if grant_data['grant_summary']:
+    if grant_data["grant_summary"]:
         st.markdown("**Summary:**")
-        st.info(grant_data['grant_summary'])
+        st.info(grant_data["grant_summary"])
     else:
         st.markdown("**Summary:** _Not provided_")
 
@@ -421,7 +437,9 @@ def show_detail_view():
                 "measure_id": st.column_config.NumberColumn("ID", width="small"),
                 "measure": st.column_config.TextColumn("Measure", width="large"),
                 "area_name": st.column_config.TextColumn("Area", width="medium"),
-                "biodiversity_priority": st.column_config.TextColumn("Priority", width="large"),
+                "biodiversity_priority": st.column_config.TextColumn(
+                    "Priority", width="large"
+                ),
             },
         )
         st.caption(f"Total: {len(related_measures):,} measure-area-priority links")

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(DATABASE_MODE=local uv run python:*)"
+      "Bash(DATABASE_MODE=local uv run python:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run ruff:*)"
     ],
     "deny": [],
     "ask": []
