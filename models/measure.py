@@ -1,6 +1,7 @@
 """Measure entity model for biodiversity measures."""
 
 import polars as pl
+import streamlit as st
 
 from models.base import BaseModel
 
@@ -247,34 +248,43 @@ class MeasureModel(BaseModel):
             "benefits": len(benefits),
         }
 
-    def get_all_measure_types(self) -> pl.DataFrame:
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_all_measure_types(_self) -> pl.DataFrame:
         """Get all available measure types for multi-select dropdown.
+
+        Cached for 1 hour as this reference data rarely changes.
 
         Returns:
             pl.DataFrame: All measure types
         """
         query = "SELECT measure_type_id, measure_type FROM measure_type ORDER BY measure_type"
-        result = self.execute_raw_query(query)
+        result = _self.execute_raw_query(query)
         return result.pl()
 
-    def get_all_stakeholders(self) -> pl.DataFrame:
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_all_stakeholders(_self) -> pl.DataFrame:
         """Get all available stakeholders for multi-select dropdown.
+
+        Cached for 1 hour as this reference data rarely changes.
 
         Returns:
             pl.DataFrame: All stakeholders
         """
         query = "SELECT stakeholder_id, stakeholder FROM stakeholder ORDER BY stakeholder"
-        result = self.execute_raw_query(query)
+        result = _self.execute_raw_query(query)
         return result.pl()
 
-    def get_all_benefits(self) -> pl.DataFrame:
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_all_benefits(_self) -> pl.DataFrame:
         """Get all available benefits for multi-select dropdown.
+
+        Cached for 1 hour as this reference data rarely changes.
 
         Returns:
             pl.DataFrame: All benefits
         """
         query = "SELECT benefit_id, benefit FROM benefits ORDER BY benefit"
-        result = self.execute_raw_query(query)
+        result = _self.execute_raw_query(query)
         return result.pl()
 
     def delete_with_cascade(self, measure_id: int) -> bool:

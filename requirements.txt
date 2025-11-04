@@ -1,0 +1,8 @@
+# Requirements for Streamlit Community Cloud Deployment
+# Generated from pyproject.toml dependencies
+
+duckdb>=1.4.1
+streamlit>=1.50.0
+polars>=1.34.0
+pyarrow>=21.0.0
+python-dotenv>=1.2.1

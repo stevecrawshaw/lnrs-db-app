@@ -9,6 +9,7 @@ dependencies = [
     "ipykernel>=7.1.0",
     "polars>=1.34.0",
     "pyarrow>=21.0.0",
+    "python-dotenv>=1.2.1",
     "sqlfluff>=3.5.0",
     "streamlit>=1.50.0",
 ]

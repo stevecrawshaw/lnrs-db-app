@@ -129,12 +129,20 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Streamlit secrets (contains sensitive tokens)
+.streamlit/secrets.toml
+
+# Local database files (already covered by data/* but being explicit)
+*.duckdb
+*.duckdb.wal
 
 # Spyder project settings
 .spyderproject

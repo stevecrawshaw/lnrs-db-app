@@ -167,6 +167,8 @@ def show_create_form():
                     measure_model.add_benefits(next_id, benefit_ids)
 
                 st.success(f"✅ Successfully created measure ID {next_id}!")
+                # Clear caches to ensure fresh data is loaded
+                st.cache_data.clear()
                 st.session_state.show_create_form = False
                 st.rerun()
             except Exception as e:
@@ -314,6 +316,8 @@ def show_edit_form(measure_id: int):
                     measure_model.add_benefits(measure_id, benefit_ids)
 
                 st.success(f"✅ Successfully updated measure ID {measure_id}!")
+                # Clear caches to ensure fresh data is loaded
+                st.cache_data.clear()
                 st.session_state.show_edit_form = False
                 st.rerun()
             except Exception as e:
@@ -357,6 +361,8 @@ def show_delete_confirmation(measure_id: int):
             try:
                 measure_model.delete_with_cascade(measure_id)
                 st.success(f"✅ Successfully deleted measure ID {measure_id}!")
+                # Clear caches to ensure fresh data is loaded
+                st.cache_data.clear()
                 st.session_state.show_delete_confirm = False
                 st.session_state.measure_view = "list"
                 st.session_state.selected_measure_id = None
