@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(DATABASE_MODE=local uv run python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
