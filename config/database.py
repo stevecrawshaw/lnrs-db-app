@@ -173,8 +173,9 @@ class DatabaseConnection:
             duckdb.Error: If connection fails
         """
         if self._connection is None:
-            # Determine database mode
-            self._mode = self._get_database_mode()
+            # Determine database mode (only if not already set by set_mode())
+            if self._mode is None:
+                self._mode = self._get_database_mode()
 
             # Create appropriate connection
             if self._mode == "motherduck":
@@ -336,6 +337,119 @@ class DatabaseConnection:
             self._connection = None
             self._mode = None
             print("[OK] Database connection closed")
+
+    def reset_connection(self) -> None:
+        """Reset the database connection without destroying singleton.
+
+        This allows switching database modes at runtime by clearing the
+        connection state while maintaining the singleton instance.
+        """
+        if self._connection:
+            try:
+                self._connection.close()
+            except Exception as e:
+                print(f"Warning: Error closing connection: {e}")
+            finally:
+                self._connection = None
+                self._mode = None
+                print("[OK] Connection reset - ready for mode switch")
+
+    def can_switch_mode(self) -> dict[str, Any]:
+        """Check if database mode switching is allowed.
+
+        Mode switching is only allowed in local development environments.
+        It requires both local database file and MotherDuck credentials.
+
+        Returns:
+            dict: {
+                "allowed": bool,
+                "reason": str,
+                "available_modes": list[str]
+            }
+        """
+        available_modes = []
+
+        # Check if running in Streamlit Cloud (production)
+        if os.getenv("STREAMLIT_SHARING_MODE"):
+            return {
+                "allowed": False,
+                "reason": "Mode switching disabled in production environment",
+                "available_modes": [],
+            }
+
+        # Check local database availability
+        db_path = Path(__file__).parent.parent / "data" / "lnrs_3nf_o1.duckdb"
+        if db_path.exists():
+            available_modes.append("local")
+
+        # Check MotherDuck credentials
+        token = self._get_config("motherduck_token")
+        if token:
+            available_modes.append("motherduck")
+
+        if len(available_modes) < 2:
+            return {
+                "allowed": False,
+                "reason": "Both database modes must be available for switching",
+                "available_modes": available_modes,
+            }
+
+        return {
+            "allowed": True,
+            "reason": "Mode switching available",
+            "available_modes": available_modes,
+        }
+
+    def set_mode(self, mode: str, force: bool = False) -> dict[str, Any]:
+        """Manually set database mode and reset connection.
+
+        Args:
+            mode: "local" or "motherduck"
+            force: Bypass safety checks (use with caution)
+
+        Returns:
+            dict: {"success": bool, "message": str}
+        """
+        # Validate mode
+        if mode not in ("local", "motherduck"):
+            return {
+                "success": False,
+                "message": f"Invalid mode: {mode}. Must be 'local' or 'motherduck'",
+            }
+
+        # Check if switching is allowed
+        if not force:
+            switch_check = self.can_switch_mode()
+            if not switch_check["allowed"]:
+                return {
+                    "success": False,
+                    "message": f"Mode switching not allowed: {switch_check['reason']}",
+                }
+
+            if mode not in switch_check["available_modes"]:
+                return {
+                    "success": False,
+                    "message": f"Mode '{mode}' not available. Available modes: {switch_check['available_modes']}",
+                }
+
+        # Reset current connection
+        self.reset_connection()
+
+        # Set new mode
+        self._mode = mode
+
+        # Test new connection
+        try:
+            self.test_connection()
+            return {
+                "success": True,
+                "message": f"Successfully switched to {mode.upper()} mode",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Failed to connect in {mode} mode: {str(e)}",
+            }
 
 
 # Global instance for easy import

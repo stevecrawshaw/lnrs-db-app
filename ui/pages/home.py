@@ -10,6 +10,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from config.database import db
+from ui.components.database_selector import render_database_selector
 
 
 # Cached functions for dashboard metrics (5 minute TTL)
@@ -54,12 +55,15 @@ def get_connection_info():
     return db.get_connection_info()
 
 
+# Render database selector in sidebar (only shown in local dev)
+render_database_selector()
+
 st.title("🌿 LNRS Database Manager")
 st.markdown("### Local Nature Recovery Strategy Database")
 
 # Database health check
 st.subheader("Database Status")
-col1, col2 = st.columns([1, 3])
+col1, col2, col3 = st.columns([1, 1, 2])
 
 with col1:
     if get_connection_status():
@@ -68,22 +72,29 @@ with col1:
         st.error("✗ Not Connected")
 
 with col2:
-    # Show connection info (mode and database)
+    # Show connection mode with icon
     conn_info = get_connection_info()
     mode = conn_info.get("mode", "unknown").upper()
     database = conn_info.get("database", "unknown")
 
     if mode == "LOCAL":
+        st.info("**📁 LOCAL**")
+    else:
+        st.info("**☁️ MOTHERDUCK**")
+
+with col3:
+    # Show database details
+    if mode == "LOCAL":
         # For local mode, show file size
         db_path = Path(project_root) / "data" / "lnrs_3nf_o1.duckdb"
         if db_path.exists():
             size_mb = db_path.stat().st_size / (1024 * 1024)
-            st.info(f"MODE: {mode} | Database: `{db_path.name}` ({size_mb:.2f} MB)")
+            st.caption(f"Database: `{db_path.name}` ({size_mb:.2f} MB)")
         else:
-            st.info(f"MODE: {mode}")
+            st.caption("Database file not found")
     else:
         # For MotherDuck mode, show database name
-        st.info(f"MODE: {mode} | Database: `{database}`")
+        st.caption(f"Database: `{database}`")
 
 # Quick stats - Load all counts at once using cached function
 st.subheader("Database Summary")
