@@ -294,12 +294,14 @@ class MeasureModel(BaseModel):
         return result.pl()
 
     def delete_with_cascade(self, measure_id: int) -> bool:
-        """Delete a measure and all its relationships atomically.
+        """Delete a measure and all its relationships.
 
-        All deletes are executed in a single transaction - either all succeed
-        or all are rolled back automatically on failure.
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions. The composite FK from measure_area_priority_grant to
+        measure_area_priority prevents atomic deletion.
 
-        Cascade order (from CLAUDE.md):
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from measure_has_type where measure_id matches
         2. Delete from measure_has_stakeholder where measure_id matches
         3. Delete from measure_area_priority_grant where measure_id matches
@@ -308,6 +310,9 @@ class MeasureModel(BaseModel):
         6. Delete from measure_has_species where measure_id matches
         7. Finally delete from measure
 
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
+
         Args:
             measure_id: ID of the measure to delete
 
@@ -315,24 +320,105 @@ class MeasureModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            duckdb.Error: If any deletion step fails (all changes rolled back)
+            duckdb.Error: If any deletion step fails
         """
-        queries = [
-            ("DELETE FROM measure_has_type WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure_has_stakeholder WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure_area_priority_grant WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure_area_priority WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure_has_benefits WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure_has_species WHERE measure_id = ?", [measure_id]),
-            ("DELETE FROM measure WHERE measure_id = ?", [measure_id]),
-        ]
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        type_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_type WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        stakeholder_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_stakeholder WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        grant_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority_grant WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        map_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        benefit_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_benefits WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        species_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_species WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting measure {measure_id} with relationships: "
+            f"{type_count} types, {stakeholder_count} stakeholders, "
+            f"{grant_count} grants, {map_count} area-priority links, "
+            f"{benefit_count} benefits, {species_count} species"
+        )
 
         try:
-            db.execute_transaction(queries)
-            logger.info(f"Successfully deleted measure {measure_id} with cascade")
+            # Step 1: Delete measure types
+            logger.debug(f"Step 1/7: Deleting {type_count} types")
+            conn.execute(
+                "DELETE FROM measure_has_type WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 2: Delete stakeholders
+            logger.debug(f"Step 2/7: Deleting {stakeholder_count} stakeholders")
+            conn.execute(
+                "DELETE FROM measure_has_stakeholder WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 3: Delete grant links (grandchild - must come before MAP)
+            logger.debug(f"Step 3/7: Deleting {grant_count} grant links")
+            conn.execute(
+                "DELETE FROM measure_area_priority_grant WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 4: Delete measure_area_priority (child - after grants)
+            logger.debug(f"Step 4/7: Deleting {map_count} area-priority links")
+            conn.execute(
+                "DELETE FROM measure_area_priority WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 5: Delete benefits
+            logger.debug(f"Step 5/7: Deleting {benefit_count} benefits")
+            conn.execute(
+                "DELETE FROM measure_has_benefits WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 6: Delete species links
+            logger.debug(f"Step 6/7: Deleting {species_count} species")
+            conn.execute(
+                "DELETE FROM measure_has_species WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            # Step 7: Delete the measure itself
+            logger.debug(f"Step 7/7: Deleting measure {measure_id}")
+            conn.execute(
+                "DELETE FROM measure WHERE measure_id = ?",
+                [measure_id],
+            )
+
+            logger.info(
+                f"Successfully deleted measure {measure_id} with cascade "
+                f"(total: {type_count + stakeholder_count + grant_count + map_count + benefit_count + species_count} child records)"
+            )
             return True
         except duckdb.Error as e:
-            logger.error(f"Failed to delete measure {measure_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to delete measure {measure_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
     def add_measure_types(self, measure_id: int, type_ids: list[int]) -> None:

@@ -224,12 +224,14 @@ class AreaModel(BaseModel):
         }
 
     def delete_with_cascade(self, area_id: int) -> bool:
-        """Delete an area and all its relationships atomically.
+        """Delete an area and all its relationships.
 
-        All deletes are executed in a single transaction - either all succeed
-        or all are rolled back automatically on failure.
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions. The composite FK from measure_area_priority_grant to
+        measure_area_priority prevents atomic deletion.
 
-        Cascade order (from CLAUDE.md):
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from measure_area_priority_grant where area_id matches
         2. Delete from measure_area_priority where area_id matches
         3. Delete from species_area_priority where area_id matches
@@ -238,6 +240,9 @@ class AreaModel(BaseModel):
         6. Delete from habitat_management_area where area_id matches
         7. Finally delete from area
 
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
+
         Args:
             area_id: ID of the area to delete
 
@@ -245,24 +250,105 @@ class AreaModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            duckdb.Error: If any deletion step fails (all changes rolled back)
+            duckdb.Error: If any deletion step fails
         """
-        queries = [
-            ("DELETE FROM measure_area_priority_grant WHERE area_id = ?", [area_id]),
-            ("DELETE FROM measure_area_priority WHERE area_id = ?", [area_id]),
-            ("DELETE FROM species_area_priority WHERE area_id = ?", [area_id]),
-            ("DELETE FROM area_funding_schemes WHERE area_id = ?", [area_id]),
-            ("DELETE FROM habitat_creation_area WHERE area_id = ?", [area_id]),
-            ("DELETE FROM habitat_management_area WHERE area_id = ?", [area_id]),
-            ("DELETE FROM area WHERE area_id = ?", [area_id]),
-        ]
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        grant_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority_grant WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+        map_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+        species_count = conn.execute(
+            "SELECT COUNT(*) FROM species_area_priority WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+        funding_count = conn.execute(
+            "SELECT COUNT(*) FROM area_funding_schemes WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+        creation_count = conn.execute(
+            "SELECT COUNT(*) FROM habitat_creation_area WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+        management_count = conn.execute(
+            "SELECT COUNT(*) FROM habitat_management_area WHERE area_id = ?",
+            [area_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting area {area_id} with relationships: "
+            f"{grant_count} grants, {map_count} measure-area-priority, "
+            f"{species_count} species, {funding_count} funding schemes, "
+            f"{creation_count} habitat creation, {management_count} habitat management"
+        )
 
         try:
-            db.execute_transaction(queries)
-            logger.info(f"Successfully deleted area {area_id} with cascade")
+            # Step 1: Delete grant links (grandchild - must come first)
+            logger.debug(f"Step 1/7: Deleting {grant_count} grant links")
+            conn.execute(
+                "DELETE FROM measure_area_priority_grant WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 2: Delete measure_area_priority (child - after grants)
+            logger.debug(f"Step 2/7: Deleting {map_count} measure-area-priority links")
+            conn.execute(
+                "DELETE FROM measure_area_priority WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 3: Delete species_area_priority
+            logger.debug(f"Step 3/7: Deleting {species_count} species links")
+            conn.execute(
+                "DELETE FROM species_area_priority WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 4: Delete funding schemes
+            logger.debug(f"Step 4/7: Deleting {funding_count} funding schemes")
+            conn.execute(
+                "DELETE FROM area_funding_schemes WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 5: Delete habitat creation links
+            logger.debug(f"Step 5/7: Deleting {creation_count} habitat creation links")
+            conn.execute(
+                "DELETE FROM habitat_creation_area WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 6: Delete habitat management links
+            logger.debug(f"Step 6/7: Deleting {management_count} habitat management links")
+            conn.execute(
+                "DELETE FROM habitat_management_area WHERE area_id = ?",
+                [area_id],
+            )
+
+            # Step 7: Delete the area itself
+            logger.debug(f"Step 7/7: Deleting area {area_id}")
+            conn.execute(
+                "DELETE FROM area WHERE area_id = ?",
+                [area_id],
+            )
+
+            logger.info(
+                f"Successfully deleted area {area_id} with cascade "
+                f"(total: {grant_count + map_count + species_count + funding_count + creation_count + management_count} child records)"
+            )
             return True
         except duckdb.Error as e:
-            logger.error(f"Failed to delete area {area_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to delete area {area_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
 

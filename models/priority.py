@@ -131,16 +131,21 @@ class PriorityModel(BaseModel):
         }
 
     def delete_with_cascade(self, priority_id: int) -> bool:
-        """Delete a priority and all its relationships atomically.
+        """Delete a priority and all its relationships.
 
-        All deletes are executed in a single transaction - either all succeed
-        or all are rolled back automatically on failure.
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions. The composite FK from measure_area_priority_grant to
+        measure_area_priority prevents atomic deletion.
 
-        Cascade order (from CLAUDE.md):
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from measure_area_priority_grant where priority_id matches
         2. Delete from measure_area_priority where priority_id matches
         3. Delete from species_area_priority where priority_id matches
         4. Finally delete from priority
+
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
 
         Args:
             priority_id: ID of the priority to delete
@@ -149,21 +154,71 @@ class PriorityModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            duckdb.Error: If any deletion step fails (all changes rolled back)
+            duckdb.Error: If any deletion step fails
         """
-        queries = [
-            ("DELETE FROM measure_area_priority_grant WHERE priority_id = ?", [priority_id]),
-            ("DELETE FROM measure_area_priority WHERE priority_id = ?", [priority_id]),
-            ("DELETE FROM species_area_priority WHERE priority_id = ?", [priority_id]),
-            ("DELETE FROM priority WHERE priority_id = ?", [priority_id]),
-        ]
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        grant_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority_grant WHERE priority_id = ?",
+            [priority_id],
+        ).fetchone()[0]
+        map_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority WHERE priority_id = ?",
+            [priority_id],
+        ).fetchone()[0]
+        species_count = conn.execute(
+            "SELECT COUNT(*) FROM species_area_priority WHERE priority_id = ?",
+            [priority_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting priority {priority_id} with relationships: "
+            f"{grant_count} grants, {map_count} measure-area-priority, "
+            f"{species_count} species"
+        )
 
         try:
-            db.execute_transaction(queries)
-            logger.info(f"Successfully deleted priority {priority_id} with cascade")
+            # Step 1: Delete grant links (grandchild - must come first)
+            logger.debug(f"Step 1/4: Deleting {grant_count} grant links")
+            conn.execute(
+                "DELETE FROM measure_area_priority_grant WHERE priority_id = ?",
+                [priority_id],
+            )
+
+            # Step 2: Delete measure_area_priority (child - after grants)
+            logger.debug(f"Step 2/4: Deleting {map_count} measure-area-priority links")
+            conn.execute(
+                "DELETE FROM measure_area_priority WHERE priority_id = ?",
+                [priority_id],
+            )
+
+            # Step 3: Delete species_area_priority
+            logger.debug(f"Step 3/4: Deleting {species_count} species links")
+            conn.execute(
+                "DELETE FROM species_area_priority WHERE priority_id = ?",
+                [priority_id],
+            )
+
+            # Step 4: Delete the priority itself
+            logger.debug(f"Step 4/4: Deleting priority {priority_id}")
+            conn.execute(
+                "DELETE FROM priority WHERE priority_id = ?",
+                [priority_id],
+            )
+
+            logger.info(
+                f"Successfully deleted priority {priority_id} with cascade "
+                f"(total: {grant_count + map_count + species_count} child records)"
+            )
             return True
         except duckdb.Error as e:
-            logger.error(f"Failed to delete priority {priority_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to delete priority {priority_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
 

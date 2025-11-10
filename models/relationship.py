@@ -1,8 +1,14 @@
 """Relationship model for managing bridge table relationships."""
 
+import logging
+
+import duckdb
 import polars as pl
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class RelationshipModel(BaseModel):
@@ -86,14 +92,14 @@ class RelationshipModel(BaseModel):
             bool: True if link was created successfully
 
         Raises:
-            Exception: If link already exists or foreign keys are invalid
+            ValueError: If link already exists
+            duckdb.Error: If foreign keys are invalid or creation fails
         """
         # Check if link already exists
         if self.link_exists_measure_area_priority(measure_id, area_id, priority_id):
-            raise ValueError(
-                f"Link already exists: measure_id={measure_id}, "
-                f"area_id={area_id}, priority_id={priority_id}"
-            )
+            error_msg = f"Link already exists: M{measure_id}-A{area_id}-P{priority_id}"
+            logger.warning(error_msg)
+            raise ValueError(error_msg)
 
         # Create the link
         query = """
@@ -103,9 +109,13 @@ class RelationshipModel(BaseModel):
 
         try:
             self.execute_raw_query(query, [measure_id, area_id, priority_id])
+            logger.info(f"Created MAP link: M{measure_id}-A{area_id}-P{priority_id}")
             return True
-        except Exception as e:
-            print(f"Error creating measure-area-priority link: {e}")
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to create MAP link M{measure_id}-A{area_id}-P{priority_id}: {e}",
+                exc_info=True,
+            )
             raise
 
     def delete_measure_area_priority_link(
@@ -113,8 +123,19 @@ class RelationshipModel(BaseModel):
     ) -> bool:
         """Delete a measure-area-priority link and cascade to grants.
 
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions. This prevents atomic deletion when child tables reference
+        the parent table.
+
         This will also delete any grants linked to this measure-area-priority
         combination from measure_area_priority_grant.
+
+        Deletions are executed sequentially:
+        1. Delete from measure_area_priority_grant (child)
+        2. Delete from measure_area_priority (parent)
+
+        Each step is committed immediately. If step 2 fails, step 1 is already committed.
 
         Args:
             measure_id: ID of the measure
@@ -125,26 +146,49 @@ class RelationshipModel(BaseModel):
             bool: True if link was deleted successfully
 
         Raises:
-            Exception: If deletion fails
+            duckdb.Error: If deletion fails
         """
+        conn = db.get_connection()
+
+        # Get grant count for logging
+        grant_count = conn.execute(
+            """SELECT COUNT(*) FROM measure_area_priority_grant
+               WHERE measure_id = ? AND area_id = ? AND priority_id = ?""",
+            [measure_id, area_id, priority_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting MAP link M{measure_id}-A{area_id}-P{priority_id} "
+            f"with {grant_count} grants"
+        )
+
         try:
-            # Step 1: Delete from measure_area_priority_grant (cascade)
-            query1 = """
-                DELETE FROM measure_area_priority_grant
-                WHERE measure_id = ? AND area_id = ? AND priority_id = ?
-            """
-            self.execute_raw_query(query1, [measure_id, area_id, priority_id])
+            # Step 1: Delete from measure_area_priority_grant (child - must come first)
+            logger.debug(f"Step 1/2: Deleting {grant_count} grants")
+            conn.execute(
+                "DELETE FROM measure_area_priority_grant WHERE measure_id = ? AND area_id = ? AND priority_id = ?",
+                [measure_id, area_id, priority_id],
+            )
 
-            # Step 2: Delete from measure_area_priority
-            query2 = """
-                DELETE FROM measure_area_priority
-                WHERE measure_id = ? AND area_id = ? AND priority_id = ?
-            """
-            self.execute_raw_query(query2, [measure_id, area_id, priority_id])
+            # Step 2: Delete from measure_area_priority (parent - after grants)
+            logger.debug(f"Step 2/2: Deleting MAP link")
+            conn.execute(
+                "DELETE FROM measure_area_priority WHERE measure_id = ? AND area_id = ? AND priority_id = ?",
+                [measure_id, area_id, priority_id],
+            )
 
+            logger.info(
+                f"Successfully deleted MAP link M{measure_id}-A{area_id}-P{priority_id} "
+                f"({grant_count} grants cascaded)"
+            )
             return True
-        except Exception as e:
-            print(f"Error deleting measure-area-priority link: {e}")
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to delete MAP link M{measure_id}-A{area_id}-P{priority_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
     def get_areas_for_measure(self, measure_id: int) -> pl.DataFrame:
@@ -302,7 +346,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [measure_id, area_id, priority_id, grant_id])
             return True
         except Exception as e:
-            print(f"Error adding grant to link: {e}")
+            logger.error(f"Failed to add grant to MAP link: {e}", exc_info=True)
             raise
 
     def remove_grant_from_link(
@@ -328,7 +372,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [measure_id, area_id, priority_id, grant_id])
             return True
         except Exception as e:
-            print(f"Error removing grant from link: {e}")
+            logger.error(f"Failed to remove grant from MAP link: {e}", exc_info=True)
             raise
 
     def get_unfunded_measure_area_priority_links(self) -> pl.DataFrame:
@@ -408,7 +452,8 @@ class RelationshipModel(BaseModel):
             bool: True if link was created successfully
 
         Raises:
-            Exception: If link already exists or creation fails
+            ValueError: If link already exists
+            duckdb.Error: If creation fails
         """
         # Check if link already exists
         query_check = """
@@ -418,10 +463,9 @@ class RelationshipModel(BaseModel):
         """
         result = self.execute_raw_query(query_check, [species_id, area_id, priority_id])
         if result.fetchone()[0] > 0:
-            raise ValueError(
-                f"Link already exists: species_id={species_id}, "
-                f"area_id={area_id}, priority_id={priority_id}"
-            )
+            error_msg = f"Link already exists: S{species_id}-A{area_id}-P{priority_id}"
+            logger.warning(error_msg)
+            raise ValueError(error_msg)
 
         # Create the link
         query = """
@@ -431,9 +475,13 @@ class RelationshipModel(BaseModel):
 
         try:
             self.execute_raw_query(query, [species_id, area_id, priority_id])
+            logger.info(f"Created SAP link: S{species_id}-A{area_id}-P{priority_id}")
             return True
-        except Exception as e:
-            print(f"Error creating species-area-priority link: {e}")
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to create SAP link S{species_id}-A{area_id}-P{priority_id}: {e}",
+                exc_info=True,
+            )
             raise
 
     def delete_species_area_priority_link(
@@ -458,7 +506,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [species_id, area_id, priority_id])
             return True
         except Exception as e:
-            print(f"Error deleting species-area-priority link: {e}")
+            logger.error(f"Failed to delete SAP link: {e}", exc_info=True)
             raise
 
     # ============================================================================
@@ -543,7 +591,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [habitat_id, area_id])
             return True
         except Exception as e:
-            print(f"Error creating habitat creation link: {e}")
+            logger.error(f"Failed to create habitat creation link: {e}", exc_info=True)
             raise
 
     def create_habitat_management_link(self, habitat_id: int, area_id: int) -> bool:
@@ -582,7 +630,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [habitat_id, area_id])
             return True
         except Exception as e:
-            print(f"Error creating habitat management link: {e}")
+            logger.error(f"Failed to create habitat management link: {e}", exc_info=True)
             raise
 
     def delete_habitat_creation_link(self, habitat_id: int, area_id: int) -> bool:
@@ -604,7 +652,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [habitat_id, area_id])
             return True
         except Exception as e:
-            print(f"Error deleting habitat creation link: {e}")
+            logger.error(f"Failed to delete habitat creation link: {e}", exc_info=True)
             raise
 
     def delete_habitat_management_link(self, habitat_id: int, area_id: int) -> bool:
@@ -626,7 +674,7 @@ class RelationshipModel(BaseModel):
             self.execute_raw_query(query, [habitat_id, area_id])
             return True
         except Exception as e:
-            print(f"Error deleting habitat management link: {e}")
+            logger.error(f"Failed to delete habitat management link: {e}", exc_info=True)
             raise
 
     # ============================================================================
@@ -636,7 +684,10 @@ class RelationshipModel(BaseModel):
     def bulk_create_measure_area_priority_links(
         self, measure_ids: list[int], area_ids: list[int], priority_ids: list[int]
     ) -> tuple[int, list[str]]:
-        """Create multiple measure-area-priority links (Cartesian product).
+        """Create multiple measure-area-priority links atomically (Cartesian product).
+
+        All links are created in a single transaction - either all succeed or all fail.
+        Links that already exist are skipped.
 
         Args:
             measure_ids: List of measure IDs
@@ -644,34 +695,50 @@ class RelationshipModel(BaseModel):
             priority_ids: List of priority IDs
 
         Returns:
-            tuple: (number of links created, list of error messages)
+            tuple: (number of links created, list of skipped/error messages)
+
+        Raises:
+            duckdb.Error: If transaction fails (all changes rolled back)
         """
-        created_count = 0
-        errors = []
+        queries = []
+        skipped = []
 
         # Generate all combinations (Cartesian product)
         for measure_id in measure_ids:
             for area_id in area_ids:
                 for priority_id in priority_ids:
-                    try:
-                        # Check if link already exists
-                        if not self.link_exists_measure_area_priority(
-                            measure_id, area_id, priority_id
-                        ):
-                            self.create_measure_area_priority_link(
-                                measure_id, area_id, priority_id
+                    # Check if link already exists
+                    if self.link_exists_measure_area_priority(
+                        measure_id, area_id, priority_id
+                    ):
+                        skipped.append(
+                            f"Link already exists: M{measure_id}-A{area_id}-P{priority_id}"
+                        )
+                    else:
+                        queries.append(
+                            (
+                                "INSERT INTO measure_area_priority (measure_id, area_id, priority_id) VALUES (?, ?, ?)",
+                                [measure_id, area_id, priority_id],
                             )
-                            created_count += 1
-                        else:
-                            errors.append(
-                                f"Link already exists: M{measure_id}-A{area_id}-P{priority_id}"
-                            )
-                    except Exception as e:
-                        errors.append(
-                            f"Error creating M{measure_id}-A{area_id}-P{priority_id}: {str(e)}"
                         )
 
-        return created_count, errors
+        if not queries:
+            logger.info("No new MAP links to create (all already exist)")
+            return 0, skipped
+
+        try:
+            db.execute_transaction(queries)
+            logger.info(
+                f"Successfully created {len(queries)} MAP links in bulk "
+                f"({len(skipped)} skipped as duplicates)"
+            )
+            return len(queries), skipped
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to bulk create MAP links: {e}. Transaction rolled back.",
+                exc_info=True,
+            )
+            raise
 
     # ============================================================================
     # VIEW EXPORTS

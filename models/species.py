@@ -113,15 +113,19 @@ class SpeciesModel(BaseModel):
         }
 
     def delete_with_cascade(self, species_id: int) -> bool:
-        """Delete a species and all its relationships atomically.
+        """Delete a species and all its relationships.
 
-        All deletes are executed in a single transaction - either all succeed
-        or all are rolled back automatically on failure.
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions, preventing atomic deletion of parent records.
 
-        Cascade order (from CLAUDE.md):
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from species_area_priority where species_id matches
         2. Delete from measure_has_species where species_id matches
         3. Finally delete from species
+
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
 
         Args:
             species_id: ID of the species to delete
@@ -130,20 +134,59 @@ class SpeciesModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            duckdb.Error: If any deletion step fails (all changes rolled back)
+            duckdb.Error: If any deletion step fails
         """
-        queries = [
-            ("DELETE FROM species_area_priority WHERE species_id = ?", [species_id]),
-            ("DELETE FROM measure_has_species WHERE species_id = ?", [species_id]),
-            ("DELETE FROM species WHERE species_id = ?", [species_id]),
-        ]
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        area_priority_count = conn.execute(
+            "SELECT COUNT(*) FROM species_area_priority WHERE species_id = ?",
+            [species_id],
+        ).fetchone()[0]
+        measure_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_species WHERE species_id = ?",
+            [species_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting species {species_id} with relationships: "
+            f"{area_priority_count} area-priority links, {measure_count} measures"
+        )
 
         try:
-            db.execute_transaction(queries)
-            logger.info(f"Successfully deleted species {species_id} with cascade")
+            # Step 1: Delete species_area_priority
+            logger.debug(f"Step 1/3: Deleting {area_priority_count} area-priority links")
+            conn.execute(
+                "DELETE FROM species_area_priority WHERE species_id = ?",
+                [species_id],
+            )
+
+            # Step 2: Delete measure_has_species
+            logger.debug(f"Step 2/3: Deleting {measure_count} measure links")
+            conn.execute(
+                "DELETE FROM measure_has_species WHERE species_id = ?",
+                [species_id],
+            )
+
+            # Step 3: Delete the species itself
+            logger.debug(f"Step 3/3: Deleting species {species_id}")
+            conn.execute(
+                "DELETE FROM species WHERE species_id = ?",
+                [species_id],
+            )
+
+            logger.info(
+                f"Successfully deleted species {species_id} with cascade "
+                f"(total: {area_priority_count + measure_count} child records)"
+            )
             return True
         except duckdb.Error as e:
-            logger.error(f"Failed to delete species {species_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to delete species {species_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
 
