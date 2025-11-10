@@ -1,8 +1,14 @@
 """Species entity model for biodiversity species."""
 
+import logging
+
+import duckdb
 import polars as pl
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class SpeciesModel(BaseModel):
@@ -107,7 +113,10 @@ class SpeciesModel(BaseModel):
         }
 
     def delete_with_cascade(self, species_id: int) -> bool:
-        """Delete a species and all its relationships following cascade order.
+        """Delete a species and all its relationships atomically.
+
+        All deletes are executed in a single transaction - either all succeed
+        or all are rolled back automatically on failure.
 
         Cascade order (from CLAUDE.md):
         1. Delete from species_area_priority where species_id matches
@@ -121,24 +130,20 @@ class SpeciesModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            Exception: If any deletion step fails
+            duckdb.Error: If any deletion step fails (all changes rolled back)
         """
+        queries = [
+            ("DELETE FROM species_area_priority WHERE species_id = ?", [species_id]),
+            ("DELETE FROM measure_has_species WHERE species_id = ?", [species_id]),
+            ("DELETE FROM species WHERE species_id = ?", [species_id]),
+        ]
+
         try:
-            # Step 1: Delete from species_area_priority
-            query1 = "DELETE FROM species_area_priority WHERE species_id = ?"
-            self.execute_raw_query(query1, [species_id])
-
-            # Step 2: Delete from measure_has_species
-            query2 = "DELETE FROM measure_has_species WHERE species_id = ?"
-            self.execute_raw_query(query2, [species_id])
-
-            # Step 3: Delete from species
-            query3 = "DELETE FROM species WHERE species_id = ?"
-            self.execute_raw_query(query3, [species_id])
-
+            db.execute_transaction(queries)
+            logger.info(f"Successfully deleted species {species_id} with cascade")
             return True
-        except Exception as e:
-            print(f"Error deleting species {species_id} with cascade: {e}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to delete species {species_id}: {e}", exc_info=True)
             raise
 
 

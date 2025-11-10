@@ -390,7 +390,102 @@ def test_measure_update_with_relationships_atomic(test_db):
     # Verify relationships
     types = get_measure_types(measure_id)
     assert len(types) == 2
+
+def test_grant_delete_with_references(test_db):
+    """Test grant delete with FK references - NOT atomic due to DuckDB limitation."""
+    from models.grant import GrantModel
+
+    grant_model = GrantModel()
+
+    # Create test grant with references
+    grant_id = create_test_grant_with_references()
+
+    # Count references before
+    ref_count = count_grant_references(grant_id)
+    assert ref_count > 0
+
+    # Delete should succeed (sequential, not atomic)
+    result = grant_model.delete_with_cascade(grant_id)
+    assert result is True
+
+    # Verify references deleted
+    assert count_grant_references(grant_id) == 0
+
+    # Verify grant deleted
+    assert grant_model.get_by_id(grant_id) is None
+
+def test_grant_delete_partial_failure_scenario(test_db):
+    """Test grant delete when step 2 fails - leaves orphaned grant."""
+    from models.grant import GrantModel
+
+    grant_model = GrantModel()
+    grant_id = create_test_grant_with_references()
+
+    # This test documents the non-atomic behavior:
+    # If step 2 (delete grant) fails after step 1 (delete references),
+    # the grant will remain but have no references.
+    # This is acceptable - grant can be deleted in retry.
+
+    # Note: Actual failure simulation would require mocking or
+    # creating specific constraint conditions
 ```
+
+### 1.5 DuckDB Foreign Key Constraint Limitation
+
+**Issue Discovered:** Grant cascade deletes cannot be fully atomic due to a DuckDB limitation.
+
+**Root Cause:**
+DuckDB checks foreign key constraints **immediately after each statement**, even within transactions. DuckDB does not support:
+- Deferred constraint checking (like PostgreSQL's `SET CONSTRAINTS DEFERRED`)
+- Disabling FK checks (no `SET foreign_key_checks` configuration)
+- Any mechanism to temporarily bypass FK validation
+
+**Impact on Grant Deletes:**
+
+The `grant_table` has a FK constraint from `measure_area_priority_grant`:
+```sql
+FOREIGN KEY (grant_id) REFERENCES grant_table(grant_id)
+```
+
+When trying to delete a grant in a transaction:
+1. ✓ DELETE from `measure_area_priority_grant` succeeds (child records)
+2. ✗ DELETE from `grant_table` fails with FK violation (even though children were deleted)
+3. DuckDB checks the FK constraint immediately, sees the constraint definition, and blocks the delete
+
+**Workaround Implemented:**
+
+Grant deletes execute sequentially **outside of a transaction**:
+
+```python
+def delete_with_cascade(self, grant_id: str) -> bool:
+    """Delete grant with cascade - NOT atomic due to DuckDB FK limitation."""
+    conn = db.get_connection()
+
+    # Step 1: Delete child records
+    conn.execute("DELETE FROM measure_area_priority_grant WHERE grant_id = ?", [grant_id])
+
+    # Step 2: Delete parent record
+    conn.execute("DELETE FROM grant_table WHERE grant_id = ?", [grant_id])
+
+    return True
+```
+
+**Trade-offs:**
+- ⚠️ **NOT atomic:** If step 2 fails, step 1's changes are already committed
+- ✓ **Correct order:** Child records deleted before parent
+- ✓ **No FK violations:** Operation respects FK constraints
+- ✓ **Safe on failure:** Grant without references can be deleted in retry
+- ⚠️ **Orphaned grant possible:** If step 2 fails, grant remains but has no references
+
+**Risk Level:** Low
+- No data corruption occurs
+- No FK constraint violations
+- Grant without references is safe to delete later
+- User can retry the operation
+
+**Other Models:** This limitation does NOT affect other cascade deletes (measure, area, priority, species, habitat) which remain fully atomic.
+
+**Documentation:** See `DUCKDB_FK_LIMITATION.md` for complete technical details and investigation notes.
 
 ### Phase 1 Deliverables
 
@@ -410,12 +505,14 @@ def test_measure_update_with_relationships_atomic(test_db):
 - `tests/test_transactions.py` - Transaction test suite
 
 **Success Criteria:**
-- [ ] All cascade deletes are atomic (all-or-nothing)
+- [ ] All cascade deletes are atomic EXCEPT grant deletes (DuckDB FK limitation)
+  - ✓ Measure, area, priority, species, habitat: Fully atomic
+  - ⚠️ Grant: Sequential (not atomic) due to FK constraint checking
 - [ ] All relationship updates are atomic
-- [ ] Failed operations automatically rollback
-- [ ] No partial failures leave database inconsistent
+- [ ] Failed operations automatically rollback (except grant step 2 failure)
+- [ ] No partial failures leave database in invalid state
 - [ ] All tests pass
-- [ ] Logging captures all transaction events
+- [ ] Logging captures all transaction events and grant delete steps
 
 ---
 
@@ -1966,6 +2063,7 @@ If database is completely corrupted:
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Transaction rollback fails | Low | High | Extensive testing, leverage existing execute_transaction() |
+| **Grant deletes not atomic** | **High** | **Low** | Sequential delete order (child first), safe retry, no FK violations, documented limitation |
 | Snapshot creation slow | Medium | Low | Monitor performance, async creation possible |
 | Restore corrupts database | Low | Critical | Always create safety backup first, test thoroughly |
 | Disk space exhaustion | Medium | Medium | Cleanup policy (keep 50), monitoring, alerts |
@@ -1986,12 +2084,15 @@ If database is completely corrupted:
 
 ### Success Metrics
 
-1. **Zero partial failures:** All multi-statement operations atomic ✓
+1. **Zero partial failures:** All multi-statement operations atomic (except grant deletes - DuckDB limitation)
+   - ✓ 5 of 6 cascade deletes are fully atomic
+   - ⚠️ Grant deletes: Sequential execution, safe failure mode
 2. **100% snapshot coverage:** All deletes have pre-operation snapshots ✓
 3. **Restore reliability:** 100% success rate in testing ✓
 4. **Performance:** Snapshot creation < 3 seconds ✓
 5. **Test coverage:** >90% for transaction and backup code ✓
 6. **User satisfaction:** Clear restore procedure, helpful errors ✓
+7. **Documentation:** DuckDB FK limitation documented (`DUCKDB_FK_LIMITATION.md`) ✓
 
 ### Timeline Summary
 
@@ -2018,14 +2119,26 @@ If database is completely corrupted:
 ## Questions for Stakeholders
 
 1. Is 5-week timeline acceptable?
-2. Should we implement database size monitoring/alerts?
-3. Do we need email notifications for backup failures?
-4. Should snapshots be encrypted at rest?
-5. Do we need role-based access control for restore operations?
+2. **Is the grant delete non-atomic limitation acceptable?** (DuckDB FK constraint limitation - documented in detail)
+3. Should we implement database size monitoring/alerts?
+4. Do we need email notifications for backup failures?
+5. Should snapshots be encrypted at rest?
+6. Do we need role-based access control for restore operations?
+
+## Important Notes
+
+### DuckDB Foreign Key Limitation (Phase 1)
+**Critical Discovery:** Grant cascade deletes cannot be fully atomic due to DuckDB's immediate FK constraint checking. This affects **only grant deletes** - all other cascade deletes (measure, area, priority, species, habitat) remain fully atomic.
+
+**Impact:** Low risk - operations execute in correct order, no data corruption, safe retry on failure
+
+**Documentation:** See section 1.5 and `DUCKDB_FK_LIMITATION.md` for complete technical details
+
+**Recommendation:** Accept limitation and proceed with implementation. Alternative would be schema migration to add `ON DELETE CASCADE`, which has broader implications.
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-01-10
+**Document Version:** 1.1
+**Last Updated:** 2025-11-10
 **Author:** Claude Code
-**Status:** Awaiting Approval
+**Status:** Updated with DuckDB FK Limitation Discovery

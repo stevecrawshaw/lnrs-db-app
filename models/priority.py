@@ -1,8 +1,14 @@
 """Priority entity model for biodiversity priorities."""
 
+import logging
+
+import duckdb
 import polars as pl
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class PriorityModel(BaseModel):
@@ -125,7 +131,10 @@ class PriorityModel(BaseModel):
         }
 
     def delete_with_cascade(self, priority_id: int) -> bool:
-        """Delete a priority and all its relationships following cascade order.
+        """Delete a priority and all its relationships atomically.
+
+        All deletes are executed in a single transaction - either all succeed
+        or all are rolled back automatically on failure.
 
         Cascade order (from CLAUDE.md):
         1. Delete from measure_area_priority_grant where priority_id matches
@@ -140,28 +149,21 @@ class PriorityModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            Exception: If any deletion step fails
+            duckdb.Error: If any deletion step fails (all changes rolled back)
         """
+        queries = [
+            ("DELETE FROM measure_area_priority_grant WHERE priority_id = ?", [priority_id]),
+            ("DELETE FROM measure_area_priority WHERE priority_id = ?", [priority_id]),
+            ("DELETE FROM species_area_priority WHERE priority_id = ?", [priority_id]),
+            ("DELETE FROM priority WHERE priority_id = ?", [priority_id]),
+        ]
+
         try:
-            # Step 1: Delete from measure_area_priority_grant
-            query1 = "DELETE FROM measure_area_priority_grant WHERE priority_id = ?"
-            self.execute_raw_query(query1, [priority_id])
-
-            # Step 2: Delete from measure_area_priority
-            query2 = "DELETE FROM measure_area_priority WHERE priority_id = ?"
-            self.execute_raw_query(query2, [priority_id])
-
-            # Step 3: Delete from species_area_priority
-            query3 = "DELETE FROM species_area_priority WHERE priority_id = ?"
-            self.execute_raw_query(query3, [priority_id])
-
-            # Step 4: Delete from priority
-            query4 = "DELETE FROM priority WHERE priority_id = ?"
-            self.execute_raw_query(query4, [priority_id])
-
+            db.execute_transaction(queries)
+            logger.info(f"Successfully deleted priority {priority_id} with cascade")
             return True
-        except Exception as e:
-            print(f"Error deleting priority {priority_id} with cascade: {e}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to delete priority {priority_id}: {e}", exc_info=True)
             raise
 
 

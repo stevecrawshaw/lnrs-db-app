@@ -5,12 +5,15 @@ both local and MotherDuck (cloud) databases. It maintains persistent connections
 for TEMP objects like macros.
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
 import duckdb
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Try to import streamlit for secrets (only available when running in Streamlit)
 try:
@@ -266,16 +269,34 @@ class DatabaseConnection:
             duckdb.Error: If any query fails (triggers rollback)
         """
         conn = self.get_connection()
+        logger.info(f"Starting transaction with {len(queries)} queries")
         conn.begin()
         try:
-            for query, parameters in queries:
+            for idx, (query, parameters) in enumerate(queries, 1):
+                logger.info(
+                    f"Executing query {idx}/{len(queries)}: {query[:60]}... "
+                    f"with params: {parameters}"
+                )
                 if parameters:
-                    conn.execute(query, parameters)
+                    result = conn.execute(query, parameters)
                 else:
-                    conn.execute(query)
+                    result = conn.execute(query)
+
+                # Log how many rows were affected
+                try:
+                    rows_affected = conn.execute("SELECT changes()").fetchone()[0]
+                    logger.info(f"Query {idx} affected {rows_affected} rows")
+                except:
+                    pass  # Some queries don't have row counts
+
             conn.commit()
+            logger.info(f"Transaction committed successfully ({len(queries)} queries)")
         except duckdb.Error as e:
             conn.rollback()
+            logger.error(
+                f"Transaction rolled back at query {idx}/{len(queries)}: {query[:60]}... "
+                f"Error: {e}"
+            )
             raise duckdb.Error(f"Transaction failed and rolled back: {e}") from e
 
     def get_table(self, table_name: str) -> duckdb.DuckDBPyRelation:

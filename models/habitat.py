@@ -1,8 +1,14 @@
 """Habitat entity model for habitat types."""
 
+import logging
+
+import duckdb
 import polars as pl
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class HabitatModel(BaseModel):
@@ -102,7 +108,10 @@ class HabitatModel(BaseModel):
         }
 
     def delete_with_cascade(self, habitat_id: int) -> bool:
-        """Delete a habitat and all its relationships following cascade order.
+        """Delete a habitat and all its relationships atomically.
+
+        All deletes are executed in a single transaction - either all succeed
+        or all are rolled back automatically on failure.
 
         Cascade order (from CLAUDE.md):
         1. Delete from habitat_creation_area where habitat_id matches
@@ -116,24 +125,20 @@ class HabitatModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            Exception: If any deletion step fails
+            duckdb.Error: If any deletion step fails (all changes rolled back)
         """
+        queries = [
+            ("DELETE FROM habitat_creation_area WHERE habitat_id = ?", [habitat_id]),
+            ("DELETE FROM habitat_management_area WHERE habitat_id = ?", [habitat_id]),
+            ("DELETE FROM habitat WHERE habitat_id = ?", [habitat_id]),
+        ]
+
         try:
-            # Step 1: Delete from habitat_creation_area
-            query1 = "DELETE FROM habitat_creation_area WHERE habitat_id = ?"
-            self.execute_raw_query(query1, [habitat_id])
-
-            # Step 2: Delete from habitat_management_area
-            query2 = "DELETE FROM habitat_management_area WHERE habitat_id = ?"
-            self.execute_raw_query(query2, [habitat_id])
-
-            # Step 3: Delete from habitat
-            query3 = "DELETE FROM habitat WHERE habitat_id = ?"
-            self.execute_raw_query(query3, [habitat_id])
-
+            db.execute_transaction(queries)
+            logger.info(f"Successfully deleted habitat {habitat_id} with cascade")
             return True
-        except Exception as e:
-            print(f"Error deleting habitat {habitat_id} with cascade: {e}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to delete habitat {habitat_id}: {e}", exc_info=True)
             raise
 
 
