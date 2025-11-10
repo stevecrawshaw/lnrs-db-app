@@ -58,11 +58,11 @@ def render_database_selector():
         col1, col2 = st.sidebar.columns(2)
 
         with col1:
-            if st.button("✓ Switch", type="primary", use_container_width=True):
+            if st.button("✓ Switch", type="primary", width="stretch"):
                 switch_database(selected_mode)
 
         with col2:
-            if st.button("✗ Cancel", use_container_width=True):
+            if st.button("✗ Cancel", width="stretch"):
                 # Reset the radio selection
                 st.session_state.database_mode = current_mode
                 st.rerun()

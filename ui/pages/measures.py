@@ -120,10 +120,10 @@ def show_create_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Measure", type="primary", use_container_width=True
+                "Create Measure", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_form = False
@@ -301,10 +301,10 @@ def show_edit_form(measure_id: int):
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Update Measure", type="primary", use_container_width=True
+                "Update Measure", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_edit_form = False
@@ -323,62 +323,45 @@ def show_edit_form(measure_id: int):
                 )
                 return
 
-            # Update measure
+            # Update measure atomically using transaction
             try:
-                measure_model.update(
-                    measure_id,
-                    {
-                        "measure": measure.strip(),
-                        "concise_measure": concise_measure.strip()
-                        if concise_measure and concise_measure.strip()
-                        else None,
-                        "core_supplementary": core_supplementary,
-                        "mapped_unmapped": mapped_unmapped if mapped_unmapped else None,
-                        "link_to_further_guidance": link_to_further_guidance.strip()
-                        if link_to_further_guidance and link_to_further_guidance.strip()
-                        else None,
-                    },
-                )
+                # Prepare measure data
+                measure_data = {
+                    "measure": measure.strip(),
+                    "concise_measure": concise_measure.strip()
+                    if concise_measure and concise_measure.strip()
+                    else None,
+                    "core_supplementary": core_supplementary,
+                    "mapped_unmapped": mapped_unmapped if mapped_unmapped else None,
+                    "link_to_further_guidance": link_to_further_guidance.strip()
+                    if link_to_further_guidance and link_to_further_guidance.strip()
+                    else None,
+                }
 
-                # Update relationships - delete old and add new
-                # Delete existing relationships
-                measure_model.execute_raw_query(
-                    "DELETE FROM measure_has_type WHERE measure_id = ?", [measure_id]
-                )
-                measure_model.execute_raw_query(
-                    "DELETE FROM measure_has_stakeholder WHERE measure_id = ?",
-                    [measure_id],
-                )
-                measure_model.execute_raw_query(
-                    "DELETE FROM measure_has_benefits WHERE measure_id = ?",
-                    [measure_id],
-                )
+                # Convert selected names to IDs
+                type_ids = [
+                    all_types.filter(pl.col("measure_type") == t)["measure_type_id"][0]
+                    for t in selected_types
+                ] if selected_types else None
 
-                # Add new relationships
-                if selected_types:
-                    type_ids = [
-                        all_types.filter(pl.col("measure_type") == t)[
-                            "measure_type_id"
-                        ][0]
-                        for t in selected_types
-                    ]
-                    measure_model.add_measure_types(measure_id, type_ids)
+                stakeholder_ids = [
+                    all_stakeholders.filter(pl.col("stakeholder") == s)["stakeholder_id"][0]
+                    for s in selected_stakeholders
+                ] if selected_stakeholders else None
 
-                if selected_stakeholders:
-                    stakeholder_ids = [
-                        all_stakeholders.filter(pl.col("stakeholder") == s)[
-                            "stakeholder_id"
-                        ][0]
-                        for s in selected_stakeholders
-                    ]
-                    measure_model.add_stakeholders(measure_id, stakeholder_ids)
+                benefit_ids = [
+                    all_benefits.filter(pl.col("benefit") == b)["benefit_id"][0]
+                    for b in selected_benefits
+                ] if selected_benefits else None
 
-                if selected_benefits:
-                    benefit_ids = [
-                        all_benefits.filter(pl.col("benefit") == b)["benefit_id"][0]
-                        for b in selected_benefits
-                    ]
-                    measure_model.add_benefits(measure_id, benefit_ids)
+                # Single atomic update operation
+                measure_model.update_with_relationships(
+                    measure_id=measure_id,
+                    measure_data=measure_data,
+                    measure_types=type_ids,
+                    stakeholders=stakeholder_ids,
+                    benefits=benefit_ids
+                )
 
                 st.success(f"✅ Successfully updated measure ID {measure_id}!")
                 # Clear caches to ensure fresh data is loaded
@@ -426,11 +409,11 @@ def show_delete_confirmation(measure_id: int):
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.session_state.show_delete_confirm = False
             st.rerun()
     with col2:
-        if st.button("🗑️ Delete Measure", type="primary", use_container_width=True):
+        if st.button("🗑️ Delete Measure", type="primary", width="stretch"):
             try:
                 measure_model.delete_with_cascade(measure_id)
                 st.success(f"✅ Successfully deleted measure ID {measure_id}!")
@@ -475,7 +458,7 @@ def show_list_view():
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             help=(
                 "Export all measures as CSV with semicolon delimiter "
                 "(safer for text with commas)"
@@ -559,11 +542,11 @@ def show_detail_view():
             back_to_list()
             st.rerun()
     with col2:
-        if st.button("✏️ Edit", use_container_width=True):
+        if st.button("✏️ Edit", width="stretch"):
             st.session_state.show_edit_form = True
             st.session_state.show_delete_confirm = False
     with col3:
-        if st.button("🗑️ Delete", use_container_width=True):
+        if st.button("🗑️ Delete", width="stretch"):
             st.session_state.show_delete_confirm = True
             st.session_state.show_edit_form = False
 
@@ -583,7 +566,7 @@ def show_detail_view():
     col1, col2 = st.columns(2)
     with col1:
         if st.button(
-            "🔗 Link to Area/Priority", use_container_width=True, type="secondary"
+            "🔗 Link to Area/Priority", width="stretch", type="secondary"
         ):
             # Set session state to pre-fill the form on relationships page
             st.session_state.quick_link_measure_id = measure_id
@@ -591,7 +574,7 @@ def show_detail_view():
             st.switch_page("ui/pages/relationships.py")
 
     with col2:
-        if st.button("👁️ View All Links", use_container_width=True, type="secondary"):
+        if st.button("👁️ View All Links", width="stretch", type="secondary"):
             # Navigate to relationships page filtered for this measure
             st.session_state.filter_measure_id = measure_id
             st.switch_page("ui/pages/relationships.py")

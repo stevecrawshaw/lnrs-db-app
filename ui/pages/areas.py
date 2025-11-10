@@ -74,10 +74,10 @@ def show_create_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Area", type="primary", use_container_width=True
+                "Create Area", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_form = False
@@ -150,10 +150,10 @@ def show_edit_form(area_id: int):
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Update Area", type="primary", use_container_width=True
+                "Update Area", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_edit_form = False
@@ -226,11 +226,11 @@ def show_delete_confirmation(area_id: int):
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.session_state.show_delete_confirm = False
             st.rerun()
     with col2:
-        if st.button("🗑️ Delete Area", type="primary", use_container_width=True):
+        if st.button("🗑️ Delete Area", type="primary", width="stretch"):
             try:
                 area_model.delete_with_cascade(area_id)
                 st.success(f"✅ Successfully deleted area ID {area_id}!")
@@ -273,7 +273,7 @@ def show_list_view():
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             help=(
                 "Export all areas as CSV with semicolon delimiter "
                 "(safer for text with commas)"
@@ -361,11 +361,11 @@ def show_detail_view():
             back_to_list()
             st.rerun()
     with col2:
-        if st.button("✏️ Edit", use_container_width=True):
+        if st.button("✏️ Edit", width="stretch"):
             st.session_state.show_edit_form = True
             st.session_state.show_delete_confirm = False
     with col3:
-        if st.button("🗑️ Delete", use_container_width=True):
+        if st.button("🗑️ Delete", width="stretch"):
             st.session_state.show_delete_confirm = True
             st.session_state.show_edit_form = False
 
@@ -383,21 +383,21 @@ def show_detail_view():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📋 Link Measure", use_container_width=True, type="secondary"):
+        if st.button("📋 Link Measure", width="stretch", type="secondary"):
             # Set session state to pre-fill the form on relationships page
             st.session_state.quick_link_area_id = area_id
             st.session_state.quick_link_action = "create_map"
             st.switch_page("ui/pages/relationships.py")
 
     with col2:
-        if st.button("🦋 Add Species", use_container_width=True, type="secondary"):
+        if st.button("🦋 Add Species", width="stretch", type="secondary"):
             # Navigate to species-area-priority tab
             st.session_state.quick_link_area_id = area_id
             st.session_state.quick_link_action = "create_species"
             st.switch_page("ui/pages/relationships.py")
 
     with col3:
-        if st.button("🌳 Add Habitat", use_container_width=True, type="secondary"):
+        if st.button("🌳 Add Habitat", width="stretch", type="secondary"):
             # Navigate to habitat creation tab
             st.session_state.quick_link_area_id = area_id
             st.session_state.quick_link_action = "create_habitat"
