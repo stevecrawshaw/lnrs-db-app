@@ -156,7 +156,7 @@ def show_measure_area_priority_interface():
         # Add delete functionality
         st.dataframe(
             display_df.to_pandas(),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "measure_id": st.column_config.NumberColumn(
@@ -306,10 +306,10 @@ def show_create_map_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Link", type="primary", use_container_width=True
+                "Create Link", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_map_form = False
@@ -413,11 +413,11 @@ def show_bulk_create_map_form():
             submitted = st.form_submit_button(
                 f"Create {total_links} Links",
                 type="primary",
-                use_container_width=True,
+                width="stretch",
                 disabled=(total_links == 0),
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_bulk_create_map_form = False
@@ -521,7 +521,7 @@ def show_grant_funding_interface():
 
         st.dataframe(
             display_df.to_pandas(),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "measure_id": st.column_config.NumberColumn(
@@ -567,7 +567,7 @@ def show_create_grant_form():
             )
         else:
             st.warning("No unfunded links available. All links have grants.")
-            st.form_submit_button("Close", use_container_width=True)
+            st.form_submit_button("Close", width="stretch")
             return
 
         st.write("**Step 2: Select Grant**")
@@ -586,10 +586,10 @@ def show_create_grant_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Add Grant", type="primary", use_container_width=True
+                "Add Grant", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_grant_form = False
@@ -684,7 +684,7 @@ def show_species_area_priority_interface():
 
         st.dataframe(
             display_df.to_pandas(),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "species_id": st.column_config.NumberColumn("ID", width="small"),
@@ -783,10 +783,10 @@ def show_create_species_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Link", type="primary", use_container_width=True
+                "Create Link", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_species_form = False
@@ -846,7 +846,7 @@ def show_habitat_creation_interface():
     if len(habitat_links) > 0:
         st.dataframe(
             habitat_links.to_pandas(),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "habitat_id": st.column_config.NumberColumn(
@@ -906,10 +906,10 @@ def show_create_habitat_creation_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Link", type="primary", use_container_width=True
+                "Create Link", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_habitat_creation_form = False
@@ -961,7 +961,7 @@ def show_habitat_management_interface():
     if len(habitat_links) > 0:
         st.dataframe(
             habitat_links.to_pandas(),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "habitat_id": st.column_config.NumberColumn(
@@ -1011,10 +1011,10 @@ def show_create_habitat_management_form():
         col1, col2 = st.columns(2)
         with col1:
             submitted = st.form_submit_button(
-                "Create Link", type="primary", use_container_width=True
+                "Create Link", type="primary", width="stretch"
             )
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_habitat_management_form = False

@@ -78,7 +78,7 @@ with col2:
             file_name=filename,
             mime="text/csv",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         st.caption(f"Filename: `{filename}`")
@@ -113,7 +113,7 @@ with export_col1:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_map",
         )
     except Exception as e:
@@ -135,7 +135,7 @@ with export_col2:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_grant",
         )
     except Exception as e:
@@ -157,7 +157,7 @@ with export_col3:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_species",
         )
     except Exception as e:
@@ -182,7 +182,7 @@ with export_col4:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_habitat_creation",
         )
     except Exception as e:
@@ -204,7 +204,7 @@ with export_col5:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_habitat_management",
         )
     except Exception as e:
@@ -226,7 +226,7 @@ with export_col6:
             data=csv_data,
             file_name=filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key="export_unfunded",
         )
     except Exception as e:

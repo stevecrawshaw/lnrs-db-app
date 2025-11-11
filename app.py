@@ -5,6 +5,9 @@ Main entry point for the Streamlit application.
 
 import streamlit as st
 
+# Initialize logging system (must be imported early)
+import config.logging_config  # noqa: F401
+
 # Page configuration
 st.set_page_config(
     page_title="LNRS Database Manager",

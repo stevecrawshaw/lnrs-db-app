@@ -78,9 +78,9 @@ def show_create_form():
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Create Species", type="primary", use_container_width=True)
+            submitted = st.form_submit_button("Create Species", type="primary", width="stretch")
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_create_form = False
@@ -180,9 +180,9 @@ def show_edit_form(species_id: int):
 
         col1, col2 = st.columns(2)
         with col1:
-            submitted = st.form_submit_button("Update Species", type="primary", use_container_width=True)
+            submitted = st.form_submit_button("Update Species", type="primary", width="stretch")
         with col2:
-            cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            cancelled = st.form_submit_button("Cancel", width="stretch")
 
         if cancelled:
             st.session_state.show_edit_form = False
@@ -245,11 +245,11 @@ def show_delete_confirmation(species_id: int):
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.session_state.show_delete_confirm = False
             st.rerun()
     with col2:
-        if st.button("🗑️ Delete Species", type="primary", use_container_width=True):
+        if st.button("🗑️ Delete Species", type="primary", width="stretch"):
             try:
                 species_model.delete_with_cascade(species_id)
                 st.success(f"✅ Successfully deleted species ID {species_id}!")
@@ -356,11 +356,11 @@ def show_detail_view():
             back_to_list()
             st.rerun()
     with col2:
-        if st.button("✏️ Edit", use_container_width=True):
+        if st.button("✏️ Edit", width="stretch"):
             st.session_state.show_edit_form = True
             st.session_state.show_delete_confirm = False
     with col3:
-        if st.button("🗑️ Delete", use_container_width=True):
+        if st.button("🗑️ Delete", width="stretch"):
             st.session_state.show_delete_confirm = True
             st.session_state.show_edit_form = False
 

@@ -1,8 +1,14 @@
 """Habitat entity model for habitat types."""
 
+import logging
+
+import duckdb
 import polars as pl
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class HabitatModel(BaseModel):
@@ -102,12 +108,19 @@ class HabitatModel(BaseModel):
         }
 
     def delete_with_cascade(self, habitat_id: int) -> bool:
-        """Delete a habitat and all its relationships following cascade order.
+        """Delete a habitat and all its relationships.
 
-        Cascade order (from CLAUDE.md):
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions, preventing atomic deletion of parent records.
+
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from habitat_creation_area where habitat_id matches
         2. Delete from habitat_management_area where habitat_id matches
         3. Finally delete from habitat
+
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
 
         Args:
             habitat_id: ID of the habitat to delete
@@ -116,24 +129,59 @@ class HabitatModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            Exception: If any deletion step fails
+            duckdb.Error: If any deletion step fails
         """
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        creation_count = conn.execute(
+            "SELECT COUNT(*) FROM habitat_creation_area WHERE habitat_id = ?",
+            [habitat_id],
+        ).fetchone()[0]
+        management_count = conn.execute(
+            "SELECT COUNT(*) FROM habitat_management_area WHERE habitat_id = ?",
+            [habitat_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting habitat {habitat_id} with relationships: "
+            f"{creation_count} creation areas, {management_count} management areas"
+        )
+
         try:
-            # Step 1: Delete from habitat_creation_area
-            query1 = "DELETE FROM habitat_creation_area WHERE habitat_id = ?"
-            self.execute_raw_query(query1, [habitat_id])
+            # Step 1: Delete habitat_creation_area
+            logger.debug(f"Step 1/3: Deleting {creation_count} creation area links")
+            conn.execute(
+                "DELETE FROM habitat_creation_area WHERE habitat_id = ?",
+                [habitat_id],
+            )
 
-            # Step 2: Delete from habitat_management_area
-            query2 = "DELETE FROM habitat_management_area WHERE habitat_id = ?"
-            self.execute_raw_query(query2, [habitat_id])
+            # Step 2: Delete habitat_management_area
+            logger.debug(f"Step 2/3: Deleting {management_count} management area links")
+            conn.execute(
+                "DELETE FROM habitat_management_area WHERE habitat_id = ?",
+                [habitat_id],
+            )
 
-            # Step 3: Delete from habitat
-            query3 = "DELETE FROM habitat WHERE habitat_id = ?"
-            self.execute_raw_query(query3, [habitat_id])
+            # Step 3: Delete the habitat itself
+            logger.debug(f"Step 3/3: Deleting habitat {habitat_id}")
+            conn.execute(
+                "DELETE FROM habitat WHERE habitat_id = ?",
+                [habitat_id],
+            )
 
+            logger.info(
+                f"Successfully deleted habitat {habitat_id} with cascade "
+                f"(total: {creation_count + management_count} child records)"
+            )
             return True
-        except Exception as e:
-            print(f"Error deleting habitat {habitat_id} with cascade: {e}")
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to delete habitat {habitat_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
 

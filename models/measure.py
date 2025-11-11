@@ -1,9 +1,15 @@
 """Measure entity model for biodiversity measures."""
 
+import logging
+
+import duckdb
 import polars as pl
 import streamlit as st
 
+from config.database import db
 from models.base import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class MeasureModel(BaseModel):
@@ -288,9 +294,14 @@ class MeasureModel(BaseModel):
         return result.pl()
 
     def delete_with_cascade(self, measure_id: int) -> bool:
-        """Delete a measure and all its relationships following cascade order.
+        """Delete a measure and all its relationships.
 
-        Cascade order (from CLAUDE.md):
+        NOTE: This operation is NOT atomic due to DuckDB FK constraint limitations.
+        DuckDB checks FK constraints immediately after each statement, even within
+        transactions. The composite FK from measure_area_priority_grant to
+        measure_area_priority prevents atomic deletion.
+
+        Sequential cascade order (from CLAUDE.md):
         1. Delete from measure_has_type where measure_id matches
         2. Delete from measure_has_stakeholder where measure_id matches
         3. Delete from measure_area_priority_grant where measure_id matches
@@ -299,6 +310,9 @@ class MeasureModel(BaseModel):
         6. Delete from measure_has_species where measure_id matches
         7. Finally delete from measure
 
+        Each step is executed sequentially and committed immediately.
+        If a later step fails, earlier deletions are already committed.
+
         Args:
             measure_id: ID of the measure to delete
 
@@ -306,74 +320,258 @@ class MeasureModel(BaseModel):
             bool: True if deletion was successful
 
         Raises:
-            Exception: If any deletion step fails
+            duckdb.Error: If any deletion step fails
         """
+        conn = db.get_connection()
+
+        # Get relationship counts for logging
+        type_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_type WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        stakeholder_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_stakeholder WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        grant_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority_grant WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        map_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_area_priority WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        benefit_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_benefits WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+        species_count = conn.execute(
+            "SELECT COUNT(*) FROM measure_has_species WHERE measure_id = ?",
+            [measure_id],
+        ).fetchone()[0]
+
+        logger.info(
+            f"Deleting measure {measure_id} with relationships: "
+            f"{type_count} types, {stakeholder_count} stakeholders, "
+            f"{grant_count} grants, {map_count} area-priority links, "
+            f"{benefit_count} benefits, {species_count} species"
+        )
+
         try:
-            # Step 1: Delete from measure_has_type
-            query1 = "DELETE FROM measure_has_type WHERE measure_id = ?"
-            self.execute_raw_query(query1, [measure_id])
+            # Step 1: Delete measure types
+            logger.debug(f"Step 1/7: Deleting {type_count} types")
+            conn.execute(
+                "DELETE FROM measure_has_type WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 2: Delete from measure_has_stakeholder
-            query2 = "DELETE FROM measure_has_stakeholder WHERE measure_id = ?"
-            self.execute_raw_query(query2, [measure_id])
+            # Step 2: Delete stakeholders
+            logger.debug(f"Step 2/7: Deleting {stakeholder_count} stakeholders")
+            conn.execute(
+                "DELETE FROM measure_has_stakeholder WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 3: Delete from measure_area_priority_grant
-            query3 = "DELETE FROM measure_area_priority_grant WHERE measure_id = ?"
-            self.execute_raw_query(query3, [measure_id])
+            # Step 3: Delete grant links (grandchild - must come before MAP)
+            logger.debug(f"Step 3/7: Deleting {grant_count} grant links")
+            conn.execute(
+                "DELETE FROM measure_area_priority_grant WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 4: Delete from measure_area_priority
-            query4 = "DELETE FROM measure_area_priority WHERE measure_id = ?"
-            self.execute_raw_query(query4, [measure_id])
+            # Step 4: Delete measure_area_priority (child - after grants)
+            logger.debug(f"Step 4/7: Deleting {map_count} area-priority links")
+            conn.execute(
+                "DELETE FROM measure_area_priority WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 5: Delete from measure_has_benefits
-            query5 = "DELETE FROM measure_has_benefits WHERE measure_id = ?"
-            self.execute_raw_query(query5, [measure_id])
+            # Step 5: Delete benefits
+            logger.debug(f"Step 5/7: Deleting {benefit_count} benefits")
+            conn.execute(
+                "DELETE FROM measure_has_benefits WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 6: Delete from measure_has_species
-            query6 = "DELETE FROM measure_has_species WHERE measure_id = ?"
-            self.execute_raw_query(query6, [measure_id])
+            # Step 6: Delete species links
+            logger.debug(f"Step 6/7: Deleting {species_count} species")
+            conn.execute(
+                "DELETE FROM measure_has_species WHERE measure_id = ?",
+                [measure_id],
+            )
 
-            # Step 7: Delete from measure
-            query7 = "DELETE FROM measure WHERE measure_id = ?"
-            self.execute_raw_query(query7, [measure_id])
+            # Step 7: Delete the measure itself
+            logger.debug(f"Step 7/7: Deleting measure {measure_id}")
+            conn.execute(
+                "DELETE FROM measure WHERE measure_id = ?",
+                [measure_id],
+            )
 
+            logger.info(
+                f"Successfully deleted measure {measure_id} with cascade "
+                f"(total: {type_count + stakeholder_count + grant_count + map_count + benefit_count + species_count} child records)"
+            )
             return True
-        except Exception as e:
-            print(f"Error deleting measure {measure_id} with cascade: {e}")
+        except duckdb.Error as e:
+            logger.error(
+                f"Failed to delete measure {measure_id}: {e}\n"
+                f"Note: This operation is NOT atomic due to DuckDB FK constraint limitations. "
+                f"Some deletions may have succeeded before this error.",
+                exc_info=True,
+            )
             raise
 
     def add_measure_types(self, measure_id: int, type_ids: list[int]) -> None:
-        """Add types to a measure.
+        """Add types to a measure atomically.
 
         Args:
             measure_id: ID of the measure
             type_ids: List of measure_type_ids to link
+
+        Raises:
+            duckdb.Error: If transaction fails
         """
-        for type_id in type_ids:
-            query = "INSERT INTO measure_has_type (measure_id, measure_type_id) VALUES (?, ?)"
-            self.execute_raw_query(query, [measure_id, type_id])
+        if not type_ids:
+            return
+
+        queries = [
+            ("INSERT INTO measure_has_type (measure_id, measure_type_id) VALUES (?, ?)",
+             [measure_id, type_id])
+            for type_id in type_ids
+        ]
+
+        try:
+            db.execute_transaction(queries)
+            logger.debug(f"Added {len(type_ids)} types to measure {measure_id}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to add types to measure {measure_id}: {e}")
+            raise
 
     def add_stakeholders(self, measure_id: int, stakeholder_ids: list[int]) -> None:
-        """Add stakeholders to a measure.
+        """Add stakeholders to a measure atomically.
 
         Args:
             measure_id: ID of the measure
             stakeholder_ids: List of stakeholder_ids to link
+
+        Raises:
+            duckdb.Error: If transaction fails
         """
-        for stakeholder_id in stakeholder_ids:
-            query = "INSERT INTO measure_has_stakeholder (measure_id, stakeholder_id) VALUES (?, ?)"
-            self.execute_raw_query(query, [measure_id, stakeholder_id])
+        if not stakeholder_ids:
+            return
+
+        queries = [
+            ("INSERT INTO measure_has_stakeholder (measure_id, stakeholder_id) VALUES (?, ?)",
+             [measure_id, stakeholder_id])
+            for stakeholder_id in stakeholder_ids
+        ]
+
+        try:
+            db.execute_transaction(queries)
+            logger.debug(f"Added {len(stakeholder_ids)} stakeholders to measure {measure_id}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to add stakeholders to measure {measure_id}: {e}")
+            raise
 
     def add_benefits(self, measure_id: int, benefit_ids: list[int]) -> None:
-        """Add benefits to a measure.
+        """Add benefits to a measure atomically.
 
         Args:
             measure_id: ID of the measure
             benefit_ids: List of benefit_ids to link
+
+        Raises:
+            duckdb.Error: If transaction fails
         """
-        for benefit_id in benefit_ids:
-            query = "INSERT INTO measure_has_benefits (measure_id, benefit_id) VALUES (?, ?)"
-            self.execute_raw_query(query, [measure_id, benefit_id])
+        if not benefit_ids:
+            return
+
+        queries = [
+            ("INSERT INTO measure_has_benefits (measure_id, benefit_id) VALUES (?, ?)",
+             [measure_id, benefit_id])
+            for benefit_id in benefit_ids
+        ]
+
+        try:
+            db.execute_transaction(queries)
+            logger.debug(f"Added {len(benefit_ids)} benefits to measure {measure_id}")
+        except duckdb.Error as e:
+            logger.error(f"Failed to add benefits to measure {measure_id}: {e}")
+            raise
+
+    def update_with_relationships(
+        self,
+        measure_id: int,
+        measure_data: dict,
+        measure_types: list[int] | None = None,
+        stakeholders: list[int] | None = None,
+        benefits: list[int] | None = None
+    ) -> bool:
+        """Update measure and all relationships atomically.
+
+        All operations are executed in a single transaction - either all succeed
+        or all are rolled back automatically on failure.
+
+        Args:
+            measure_id: ID of the measure to update
+            measure_data: Dictionary of measure fields to update
+            measure_types: List of measure_type_ids (replaces existing)
+            stakeholders: List of stakeholder_ids (replaces existing)
+            benefits: List of benefit_ids (replaces existing)
+
+        Returns:
+            bool: True if update was successful
+
+        Raises:
+            duckdb.Error: If any operation fails (all changes rolled back)
+        """
+        queries = []
+
+        # 1. Update measure record
+        if measure_data:
+            set_clause = ", ".join([f"{k} = ?" for k in measure_data.keys()])
+            values = list(measure_data.values()) + [measure_id]
+            queries.append((
+                f"UPDATE measure SET {set_clause} WHERE measure_id = ?",
+                values
+            ))
+
+        # 2. Delete existing relationships
+        queries.extend([
+            ("DELETE FROM measure_has_type WHERE measure_id = ?", [measure_id]),
+            ("DELETE FROM measure_has_stakeholder WHERE measure_id = ?", [measure_id]),
+            ("DELETE FROM measure_has_benefits WHERE measure_id = ?", [measure_id]),
+        ])
+
+        # 3. Insert new relationships
+        if measure_types:
+            for type_id in measure_types:
+                queries.append((
+                    "INSERT INTO measure_has_type (measure_id, measure_type_id) VALUES (?, ?)",
+                    [measure_id, type_id]
+                ))
+
+        if stakeholders:
+            for stakeholder_id in stakeholders:
+                queries.append((
+                    "INSERT INTO measure_has_stakeholder (measure_id, stakeholder_id) VALUES (?, ?)",
+                    [measure_id, stakeholder_id]
+                ))
+
+        if benefits:
+            for benefit_id in benefits:
+                queries.append((
+                    "INSERT INTO measure_has_benefits (measure_id, benefit_id) VALUES (?, ?)",
+                    [measure_id, benefit_id]
+                ))
+
+        try:
+            db.execute_transaction(queries)
+            logger.info(f"Updated measure {measure_id} with {len(queries)} operations")
+            return True
+        except duckdb.Error as e:
+            logger.error(f"Failed to update measure {measure_id}: {e}", exc_info=True)
+            raise
 
 
 # %%
