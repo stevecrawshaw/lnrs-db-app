@@ -87,7 +87,24 @@ Each model extends BaseModel:
 
 Models use DuckDB's relational Python API for database operations.
 
-### 3. Database Layer (`config/`)
+**Transaction Support:**
+- Models with `update_with_relationships()` use atomic transactions
+- Models with `delete_with_cascade()` use sequential approach (DuckDB FK limitation)
+- Comprehensive logging for all operations
+
+### 3. Logging Layer (`config/logging_config.py`)
+
+**Setup Function:** `setup_logging()`
+- Configures application-wide logging
+- Log file: `logs/transactions.log`
+- Captures transaction operations, cascade deletes, and errors
+
+**Log Levels:**
+- INFO: Transaction start/commit, operation summaries
+- DEBUG: Individual query execution, row counts
+- ERROR: Transaction rollback, operation failures
+
+### 4. Database Layer (`config/`)
 
 #### Database Connection (`config/database.py`)
 
@@ -99,16 +116,23 @@ class DatabaseConnection:
     _mode = None  # 'local' or 'motherduck'
 ```
 
-**Key Methods**:
+**Key Methods:**
 - `get_connection()`: Returns active DuckDB connection
 - `get_connection_info()`: Returns mode and database info
 - `set_mode(mode)`: Switch between local/MotherDuck
 - `can_switch_mode()`: Check if mode switch is safe
 - `test_connection()`: Verify connection works
 - `execute_query(query)`: Execute SQL query
-- `execute_transaction(queries)`: Execute multiple queries in transaction
+- `execute_transaction(queries)`: Execute multiple queries in atomic transaction (lines 261-299)
 - `get_table(table_name)`: Get table as DuckDB relation
 - `_load_macros()`: Load custom SQL macros
+
+**Transaction Implementation (Phase 1):**
+- `execute_transaction()` provides atomic multi-query execution
+- Comprehensive logging with step-by-step progress
+- Automatic rollback on errors
+- Used for update operations and bulk creation
+- NOT used for cascade deletes due to DuckDB FK constraint limitation
 
 **Connection Modes**:
 1. **Local Mode**: Uses `data/lnrs_3nf_o1.duckdb`
@@ -174,17 +198,33 @@ Success feedback
 
 ## Important Patterns
 
-### 1. Cascading Delete Pattern
-Critical for data integrity. Delete order for measures:
+### 1. Cascading Delete Pattern (Sequential - NOT Atomic)
+**Critical:** Due to DuckDB FK constraint limitation, cascade deletes are sequential, not atomic.
+
+**Pattern:** Delete grandchildren → children → parent in strict order
+
+**Measure Delete Order (7 steps):**
 ```python
+# Each step executes and commits immediately
 1. measure_has_type (where measure_id = X)
 2. measure_has_stakeholder (where measure_id = X)
-3. measure_area_priority_grant (where measure_id = X)
-4. measure_area_priority (where measure_id = X)
+3. measure_area_priority_grant (where measure_id = X) # grandchild
+4. measure_area_priority (where measure_id = X) # child
 5. measure_has_benefits (where measure_id = X)
 6. measure_has_species (where measure_id = X)
-7. measure (where measure_id = X)
+7. measure (where measure_id = X) # parent last
 ```
+
+**Why Sequential:**
+- DuckDB checks FK constraints immediately after each statement
+- Even within transactions, FK violations occur when deleting parents
+- See `DUCKDB_FK_LIMITATION.md` for full explanation
+
+**Safety Measures:**
+- Correct delete order prevents FK violations
+- Comprehensive step-by-step logging
+- Safe to retry on partial failure
+- No data corruption possible
 
 ### 2. ID Generation Pattern
 Uses DuckDB macros for new IDs:

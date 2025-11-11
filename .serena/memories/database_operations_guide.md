@@ -231,21 +231,66 @@ DELETE FROM area WHERE area_id = ?;
 
 ## Transaction Management
 
-Always use transactions for multi-step operations:
+**IMPORTANT:** Transaction usage depends on operation type due to DuckDB FK constraint limitation.
+
+### When to Use Transactions (✅ Fully Atomic)
+
+**Update Operations:**
 
 ```python
+# Use db.execute_transaction() for atomic operations
+queries = [
+    ("UPDATE measure SET title = ?, summary = ? WHERE measure_id = ?", [title, summary, id]),
+    ("DELETE FROM measure_has_type WHERE measure_id = ?", [id]),
+    ("INSERT INTO measure_has_type VALUES (?, ?)", [id, type1]),
+    ("INSERT INTO measure_has_type VALUES (?, ?)", [id, type2]),
+]
+
 try:
-    conn.execute("BEGIN TRANSACTION")
-    
-    # Execute multiple related queries
-    conn.execute("DELETE FROM measure_has_type WHERE measure_id = ?", [measure_id])
-    conn.execute("DELETE FROM measure WHERE measure_id = ?", [measure_id])
-    
-    conn.execute("COMMIT")
-except Exception as e:
-    conn.execute("ROLLBACK")
-    raise e
+    db.execute_transaction(queries)  # All-or-nothing guarantee
+except duckdb.Error as e:
+    # Automatic rollback, all changes reverted
+    logger.error(f"Transaction failed: {e}")
+    raise
 ```
+
+### When NOT to Use Transactions (⚠️ Sequential Approach Required)
+
+**Cascade Delete Operations:**
+Due to DuckDB's immediate FK constraint checking, parent record deletions must be sequential.
+
+```python
+# Sequential delete pattern - NOT atomic
+def delete_with_cascade(self, measure_id: int) -> bool:
+    conn = db.get_connection()
+    
+    try:
+        # Each statement executes and commits immediately
+        logger.debug(f"Step 1/7: Deleting types")
+        conn.execute("DELETE FROM measure_has_type WHERE measure_id = ?", [measure_id])
+        
+        logger.debug(f"Step 2/7: Deleting stakeholders")
+        conn.execute("DELETE FROM measure_has_stakeholder WHERE measure_id = ?", [measure_id])
+        
+        # ... continue through all 7 steps
+        
+        logger.info(f"Successfully deleted measure {measure_id} with cascade")
+        return True
+    except duckdb.Error as e:
+        logger.error(f"Failed at step: {e}")
+        raise
+```
+
+**Why Sequential:**
+- DuckDB checks FK constraints after each statement, even in transactions
+- Deleting parent records fails even when children are deleted first in same transaction
+- See `DUCKDB_FK_LIMITATION.md` for detailed explanation
+
+**Affected Operations:**
+- All 6 entity cascade deletes (measure, area, priority, species, habitat, grant)
+- Relationship link deletes (MAP links with child grants)
+
+**Tested:** 2,373+ relationships successfully deleted using sequential approach
 
 ## Common Queries
 

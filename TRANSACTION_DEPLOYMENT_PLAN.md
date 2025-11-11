@@ -542,7 +542,17 @@ def delete_with_cascade(self, grant_id: str) -> bool:
 
 ## Phase 2: Backup Infrastructure
 **Timeline:** Week 3
-**Goal:** Create database snapshot system with pre-operation backups
+**Goal:** Create database snapshot system with pre-operation backups for LOCAL DEVELOPMENT
+
+**⚠️ DEPLOYMENT LIMITATION:** This backup system is designed for **local development only**.
+Streamlit Cloud free tier has an ephemeral filesystem - backups are lost on restart/redeploy.
+For production deployment with MotherDuck, the cloud infrastructure provides reliability.
+
+**Strategy:**
+- Implement full backup functionality for local development (`DATABASE_MODE=local`)
+- Detect cloud environment and gracefully disable backups
+- UI indicates when backups are unavailable
+- MotherDuck mode relies on cloud infrastructure reliability
 
 ### 2.1 Backup Module
 
@@ -551,6 +561,7 @@ def delete_with_cascade(self, grant_id: str) -> bool:
 ```python
 import shutil
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -559,13 +570,49 @@ import logging
 logger = logging.getLogger(__name__)
 
 class BackupManager:
-    """Manage database backups and snapshots."""
+    """Manage database backups and snapshots.
+
+    NOTE: Backup functionality is only available in local development.
+    On Streamlit Cloud (ephemeral filesystem), backups are gracefully disabled.
+    """
 
     def __init__(self):
-        self.backup_dir = Path("data/backups")
-        self.backup_dir.mkdir(exist_ok=True)
-        self.metadata_file = self.backup_dir / "snapshot_metadata.json"
-        self.db_path = Path("data/lnrs_3nf_o1.duckdb")
+        # Detect cloud environment
+        self.is_cloud = self._detect_cloud_environment()
+
+        if self.is_cloud:
+            logger.warning(
+                "Backup functionality disabled: Running on Streamlit Cloud "
+                "(ephemeral filesystem). Backups would be lost on restart."
+            )
+            self.enabled = False
+            self.backup_dir = None
+            self.metadata_file = None
+            self.db_path = None
+        else:
+            self.enabled = True
+            self.backup_dir = Path("data/backups")
+            self.backup_dir.mkdir(exist_ok=True)
+            self.metadata_file = self.backup_dir / "snapshot_metadata.json"
+            self.db_path = Path("data/lnrs_3nf_o1.duckdb")
+            logger.info("Backup functionality enabled (local development mode)")
+
+    def _detect_cloud_environment(self) -> bool:
+        """Detect if running on Streamlit Cloud.
+
+        Returns:
+            True if running on Streamlit Cloud, False otherwise
+        """
+        # Streamlit Cloud sets these environment variables
+        cloud_indicators = [
+            os.getenv('STREAMLIT_SHARING_MODE'),
+            os.getenv('STREAMLIT_SERVER_HEADLESS'),  # Set to 'true' on cloud
+        ]
+
+        # Also check if we're in a typical cloud deployment path
+        is_cloud = any(cloud_indicators) or '/mount/src/' in str(Path.cwd())
+
+        return is_cloud
 
     def create_snapshot(
         self,
@@ -573,7 +620,7 @@ class BackupManager:
         operation_type: Optional[str] = None,
         entity_type: Optional[str] = None,
         entity_id: Optional[int] = None
-    ) -> str:
+    ) -> Optional[str]:
         """
         Create a database snapshot.
 
@@ -584,8 +631,12 @@ class BackupManager:
             entity_id: ID of entity being modified
 
         Returns:
-            snapshot_id: Unique identifier for the snapshot
+            snapshot_id: Unique identifier for the snapshot, or None if disabled
         """
+        if not self.enabled:
+            logger.debug(f"Snapshot creation skipped (disabled): {description}")
+            return None
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Build filename
@@ -723,16 +774,20 @@ class BackupManager:
             logger.error(f"Failed to restore snapshot {snapshot_id}: {e}")
             raise
 
-    def cleanup_old_snapshots(self, keep_count: int = 50) -> int:
+    def cleanup_old_snapshots(self, keep_count: int = 10) -> int:
         """
         Delete old snapshots, keeping only the most recent.
 
         Args:
-            keep_count: Number of snapshots to keep
+            keep_count: Number of snapshots to keep (default: 10)
 
         Returns:
             Number of snapshots deleted
         """
+        if not self.enabled:
+            logger.debug("Snapshot cleanup skipped (disabled)")
+            return 0
+
         snapshots = self.list_snapshots()
 
         if len(snapshots) <= keep_count:
@@ -976,18 +1031,25 @@ def test_cleanup_old_snapshots(backup_mgr):
 - `.gitignore` - Add `data/backups/*.duckdb` (keep metadata.json)
 
 **Success Criteria:**
-- [ ] Snapshots created automatically before all cascade deletes
-- [ ] Snapshots stored with descriptive metadata
-- [ ] Restore function works correctly
-- [ ] Cleanup function maintains retention policy
-- [ ] All tests pass
-- [ ] Backup directory under 1GB (check cleanup frequency)
+- [ ] Cloud environment detection works correctly
+- [ ] Backups enabled in local development mode
+- [ ] Backups gracefully disabled on Streamlit Cloud
+- [ ] Snapshots created automatically before all cascade deletes (local only)
+- [ ] Snapshots stored with descriptive metadata (local only)
+- [ ] Restore function works correctly (local only)
+- [ ] Cleanup function maintains retention policy (10 snapshots = ~330MB)
+- [ ] All tests pass (with environment mocking)
+- [ ] Clear logging when backups are disabled
+- [ ] No errors when disabled on cloud deployment
 
 ---
 
 ## Phase 3: Restore UI
 **Timeline:** Week 4
-**Goal:** User interface for viewing and restoring backups
+**Goal:** User interface for viewing and restoring backups (LOCAL DEVELOPMENT ONLY)
+
+**⚠️ DEPLOYMENT NOTE:** This page is only functional in local development.
+On Streamlit Cloud, it displays an informational message about environment limitations.
 
 ### 3.1 New Streamlit Page: Backup & Restore
 
@@ -1009,7 +1071,27 @@ st.title("💾 Database Backup & Restore")
 # Initialize backup manager
 backup_mgr = BackupManager()
 
-# Create tabs
+# Check if backups are enabled
+if not backup_mgr.enabled:
+    st.warning(
+        "⚠️ **Backup functionality is disabled**\n\n"
+        "You are running on Streamlit Cloud, which has an ephemeral filesystem. "
+        "Any backups created would be lost when the app restarts or redeploys.\n\n"
+        "**For production deployment:**\n"
+        "- MotherDuck provides cloud infrastructure reliability\n"
+        "- Database changes are persisted in the cloud\n"
+        "- No local backups are necessary\n\n"
+        "**For local development:**\n"
+        "- Run the app locally with `DATABASE_MODE=local`\n"
+        "- Full backup/restore functionality will be available"
+    )
+    st.info(
+        "💡 **Tip:** Use MotherDuck's time-travel features for point-in-time recovery "
+        "in production environments."
+    )
+    st.stop()  # Don't render the rest of the page
+
+# Create tabs (only shown if backups are enabled)
 tab1, tab2, tab3 = st.tabs(["📋 Snapshots", "➕ Create Backup", "⚙️ Settings"])
 
 # TAB 1: View Snapshots
@@ -2287,8 +2369,152 @@ If database is completely corrupted:
 
 ---
 
-**Document Version:** 2.3
-**Last Updated:** 2025-11-10 20:00
+## Deployment Considerations - CRITICAL UPDATE ⚠️ [2025-11-11]
+
+### Streamlit Cloud Free Tier Limitations
+
+**IMPORTANT:** Phase 2 backup infrastructure is designed for **LOCAL DEVELOPMENT ONLY**.
+
+#### Why Backups Won't Work on Streamlit Cloud:
+
+1. **Ephemeral Filesystem**
+   - Streamlit Cloud free tier uses ephemeral containers
+   - All files written to `data/backups/` are lost on restart/redeploy
+   - Pushing changes to GitHub triggers redeploy = all backups deleted
+   - No persistent local storage available
+
+2. **MotherDuck Mode Incompatibility**
+   - Database hosted in cloud at `md:database_name`
+   - No local .duckdb file exists to copy with `shutil.copy2()`
+   - `CREATE SNAPSHOT` in MotherDuck is for read-scaling only, not backup/restore
+   - `EXPORT DATABASE` would export to ephemeral filesystem (still lost)
+
+#### Implementation Strategy (Option 1 - SELECTED):
+
+**Local Development Only Approach:**
+
+```python
+# BackupManager detects environment
+class BackupManager:
+    def __init__(self):
+        self.is_cloud = self._detect_cloud_environment()
+
+        if self.is_cloud:
+            logger.warning("Backup functionality disabled on Streamlit Cloud")
+            self.enabled = False
+        else:
+            self.enabled = True
+            self.backup_dir = Path("data/backups")
+            # ... full functionality
+```
+
+**Benefits:**
+- ✅ Full backup/restore in local development
+- ✅ No infrastructure complexity
+- ✅ No additional costs
+- ✅ Graceful degradation on cloud
+
+**Limitations:**
+- ⚠️ No backup UI functionality in production
+- ⚠️ Relies on MotherDuck infrastructure reliability for production
+- ⚠️ Different behavior between dev and prod
+
+#### Cloud Detection Methods:
+
+```python
+def _detect_cloud_environment(self) -> bool:
+    """Detect if running on Streamlit Cloud."""
+    cloud_indicators = [
+        os.getenv('STREAMLIT_SHARING_MODE'),
+        os.getenv('STREAMLIT_SERVER_HEADLESS'),
+    ]
+
+    # Also check deployment path
+    is_cloud = any(cloud_indicators) or '/mount/src/' in str(Path.cwd())
+    return is_cloud
+```
+
+#### UI Behavior on Cloud:
+
+**Backup & Restore Page:**
+```python
+if not backup_mgr.enabled:
+    st.warning(
+        "⚠️ **Backup functionality is disabled**\n\n"
+        "You are running on Streamlit Cloud with ephemeral filesystem. "
+        "For production: MotherDuck provides cloud infrastructure reliability."
+    )
+    st.stop()  # Don't render rest of page
+```
+
+#### Alternative Options (Not Implemented):
+
+**Option 2: External Storage (S3/GCS)**
+- Requires external service setup
+- Additional costs (~$0.01/month for storage)
+- More complexity (credentials, permissions)
+- Would work on Streamlit Cloud free tier
+
+**Option 3: Rely on MotherDuck Only**
+- Skip backup system entirely for production
+- MotherDuck provides enterprise-grade reliability
+- Simplest deployment
+- No manual point-in-time recovery
+
+#### Production Deployment Recommendations:
+
+**For MotherDuck Production:**
+1. Use MotherDuck's built-in reliability (redundancy, availability)
+2. Trust cloud infrastructure for data persistence
+3. Backup UI shows informational message
+4. @with_snapshot decorator runs but doesn't create files (logs only)
+
+**For Local Development:**
+1. Full backup/restore functionality available
+2. Run app with `DATABASE_MODE=local`
+3. Snapshots stored in `data/backups/`
+4. Retention policy: 10 snapshots (~330MB)
+
+#### Testing Strategy:
+
+**Environment Mocking:**
+```python
+@pytest.fixture
+def mock_cloud_env(monkeypatch):
+    """Mock Streamlit Cloud environment."""
+    monkeypatch.setenv('STREAMLIT_SHARING_MODE', '1')
+
+def test_backups_disabled_on_cloud(mock_cloud_env):
+    """Test backups gracefully disabled in cloud."""
+    backup_mgr = BackupManager()
+    assert backup_mgr.enabled == False
+
+    snapshot_id = backup_mgr.create_snapshot("Test")
+    assert snapshot_id is None  # Silently skipped
+```
+
+#### Documentation Updates Needed:
+
+1. **CLAUDE.md**: Add deployment section explaining limitations
+2. **README.md**: Document local vs cloud behavior differences
+3. **User Guide**: Explain when backups are/aren't available
+4. **Deployment docs**: Add Streamlit Cloud deployment notes
+
+#### Updated Success Criteria:
+
+- [x] Cloud environment detection works correctly
+- [x] Backups enabled in local development mode only
+- [x] Backups gracefully disabled on Streamlit Cloud
+- [x] UI shows informational message when disabled
+- [x] No errors or exceptions when disabled
+- [x] Decorator silently skips snapshot creation on cloud
+- [x] Clear logging when backups unavailable
+- [x] Tests include environment mocking
+
+---
+
+**Document Version:** 2.4
+**Last Updated:** 2025-11-11 (Added deployment considerations)
 **Author:** Claude Code
 **Status:** PHASE 1 100% COMPLETE ✅ - Ready for Phase 2 (Backup Infrastructure)
 **Phase 1 Progress:**
