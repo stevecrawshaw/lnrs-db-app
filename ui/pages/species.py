@@ -1,8 +1,10 @@
 """Species page - View and manage species data."""
 
+import logging
 import sys
 from pathlib import Path
 
+import duckdb
 import polars as pl
 import streamlit as st
 
@@ -12,6 +14,8 @@ sys.path.insert(0, str(project_root))
 
 from models.species import SpeciesModel
 from ui.components.tables import display_data_table
+
+logger = logging.getLogger(__name__)
 
 # Initialize model
 species_model = SpeciesModel()
@@ -257,8 +261,15 @@ def show_delete_confirmation(species_id: int):
                 st.session_state.species_view = "list"
                 st.session_state.selected_species_id = None
                 st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error deleting species: {str(e)}")
+            except duckdb.Error as e:
+                error_msg = str(e)
+                if "constraint" in error_msg.lower():
+                    st.error("❌ Cannot delete: This species is referenced by other data")
+                elif "not found" in error_msg.lower():
+                    st.error("❌ Species not found")
+                else:
+                    st.error(f"❌ Database error: {error_msg}")
+                logger.exception("Operation failed for user")
 
 
 def show_list_view():

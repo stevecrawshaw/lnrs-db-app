@@ -1,10 +1,12 @@
 """Measures page - View and manage biodiversity measures."""
 
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+import duckdb
 import polars as pl
 import streamlit as st
 
@@ -14,6 +16,8 @@ sys.path.insert(0, str(project_root))
 
 from models.measure import MeasureModel  # noqa: E402
 from ui.components.tables import display_data_table  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 # Initialize model
 measure_model = MeasureModel()
@@ -423,8 +427,15 @@ def show_delete_confirmation(measure_id: int):
                 st.session_state.measure_view = "list"
                 st.session_state.selected_measure_id = None
                 st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error deleting measure: {str(e)}")
+            except duckdb.Error as e:
+                error_msg = str(e)
+                if "constraint" in error_msg.lower():
+                    st.error("❌ Cannot delete: This measure is referenced by other data")
+                elif "not found" in error_msg.lower():
+                    st.error("❌ Measure not found")
+                else:
+                    st.error(f"❌ Database error: {error_msg}")
+                logger.exception("Operation failed for user")
 
 
 def show_list_view():

@@ -3,6 +3,7 @@
 Provides common CRUD operations and utilities for database entities.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -10,6 +11,8 @@ import duckdb
 import polars as pl
 
 from config.database import db
+
+logger = logging.getLogger(__name__)
 
 
 class BaseModel(ABC):
@@ -97,7 +100,7 @@ class BaseModel(ABC):
                 return dict(zip(columns, row))
             return None
         except duckdb.Error as e:
-            print(f"Error fetching record {record_id}: {e}")
+            logger.error(f"Error fetching record {record_id}: {e}", exc_info=True)
             return None
 
     def get_all(
@@ -129,7 +132,7 @@ class BaseModel(ABC):
             result = db.execute_query(query)
             return result.pl()
         except duckdb.Error as e:
-            print(f"Error fetching records: {e}")
+            logger.error(f"Error fetching records: {e}", exc_info=True)
             return pl.DataFrame()
 
     def filter(self, where_clause: str, parameters: list[Any] | None = None) -> pl.DataFrame:
@@ -148,7 +151,7 @@ class BaseModel(ABC):
             result = db.execute_query(query, parameters)
             return result.pl()
         except duckdb.Error as e:
-            print(f"Error filtering records: {e}")
+            logger.error(f"Error filtering records: {e}", exc_info=True)
             return pl.DataFrame()
 
     def delete(self, record_id: int | str) -> bool:
@@ -168,7 +171,7 @@ class BaseModel(ABC):
             db.execute_query(query, [record_id])
             return True
         except duckdb.Error as e:
-            print(f"Error deleting record {record_id}: {e}")
+            logger.error(f"Error deleting record {record_id}: {e}", exc_info=True)
             return False
 
     def create(self, data: dict[str, Any]) -> int | str | None:
@@ -193,7 +196,7 @@ class BaseModel(ABC):
             # Return the ID if it was provided in data
             return data.get(self.id_column)
         except duckdb.Error as e:
-            print(f"Error creating record: {e}")
+            logger.error(f"Error creating record: {e}", exc_info=True)
             return None
 
     def update(self, record_id: int | str, data: dict[str, Any]) -> bool:
@@ -214,7 +217,7 @@ class BaseModel(ABC):
             db.execute_query(query, parameters)
             return True
         except duckdb.Error as e:
-            print(f"Error updating record {record_id}: {e}")
+            logger.error(f"Error updating record {record_id}: {e}", exc_info=True)
             return False
 
     def execute_raw_query(self, query: str, parameters: list[Any] | None = None) -> duckdb.DuckDBPyRelation:

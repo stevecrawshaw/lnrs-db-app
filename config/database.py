@@ -124,7 +124,7 @@ class DatabaseConnection:
 
         try:
             connection = duckdb.connect(str(db_path))
-            print(f"[OK] Connected to LOCAL database: {db_path}")
+            logger.info(f"Connected to LOCAL database: {db_path}")
             return connection
         except duckdb.Error as e:
             raise duckdb.Error(f"Failed to connect to local database: {e}") from e
@@ -155,7 +155,7 @@ class DatabaseConnection:
             # md:database_name?motherduck_token=TOKEN
             connection_string = f"md:{database_name}?motherduck_token={token}"
             connection = duckdb.connect(connection_string)
-            print(f"[OK] Connected to MOTHERDUCK database: {database_name}")
+            logger.info(f"Connected to MOTHERDUCK database: {database_name}")
             return connection
         except duckdb.Error as e:
             raise duckdb.Error(
@@ -210,9 +210,9 @@ class DatabaseConnection:
                 "CREATE MACRO max_meas() AS "
                 "(SELECT COALESCE(MAX(measure_id), 0) + 1 FROM measure)"
             )
-            print("[OK] Macros loaded successfully")
+            logger.info("Macros loaded successfully")
         except duckdb.Error as e:
-            print(f"Warning: Failed to load macros: {e}")
+            logger.warning(f"Failed to load macros: {e}")
 
     def get_connection_info(self) -> dict[str, Any]:
         """Get information about the current database connection.
@@ -328,7 +328,7 @@ class DatabaseConnection:
             result = conn.execute("SELECT 1 as test").fetchone()
             return result is not None and result[0] == 1
         except Exception as e:
-            print(f"Connection test failed: {e}")
+            logger.error(f"Connection test failed: {e}", exc_info=True)
             return False
 
     def get_table_count(self, table_name: str) -> int:
@@ -357,7 +357,7 @@ class DatabaseConnection:
             self._connection.close()
             self._connection = None
             self._mode = None
-            print("[OK] Database connection closed")
+            logger.info("Database connection closed")
 
     def reset_connection(self) -> None:
         """Reset the database connection without destroying singleton.
@@ -369,11 +369,11 @@ class DatabaseConnection:
             try:
                 self._connection.close()
             except Exception as e:
-                print(f"Warning: Error closing connection: {e}")
+                logger.warning(f"Error closing connection: {e}", exc_info=True)
             finally:
                 self._connection = None
                 self._mode = None
-                print("[OK] Connection reset - ready for mode switch")
+                logger.info("Connection reset - ready for mode switch")
 
     def can_switch_mode(self) -> dict[str, Any]:
         """Check if database mode switching is allowed.

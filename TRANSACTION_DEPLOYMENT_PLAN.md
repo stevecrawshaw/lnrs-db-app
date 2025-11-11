@@ -266,6 +266,86 @@ def setup_logging():
     root_logger.addHandler(file_handler)
 ```
 
+**Section Status:** ✅ COMPLETE (2025-11-11)
+
+**Changes Implemented:**
+
+1. **Created `config/logging_config.py`:**
+   - ✅ Centralized logging setup function
+   - ✅ Console handler (WARNING level) for user-facing messages
+   - ✅ File handler (DEBUG level) for detailed transaction logs
+   - ✅ Automatic initialization on import
+
+2. **Updated Model Files:**
+   - ✅ `models/base.py` - Replaced all 6 print() statements with logger.error() calls
+   - ✅ `models/measure.py` - Already using logging (from sections 1.1-1.3)
+   - ✅ `models/area.py` - Already using logging (from section 1.1)
+   - ✅ `models/priority.py` - Already using logging (from section 1.1)
+   - ✅ `models/species.py` - Already using logging (from section 1.1)
+   - ✅ `models/habitat.py` - Already using logging (from section 1.1)
+   - ✅ `models/grant.py` - Already using logging (from section 1.1)
+   - ✅ All model files use `duckdb.Error` instead of generic `Exception`
+
+3. **Updated `config/database.py`:**
+   - ✅ Replaced 6 print() statements with appropriate logger calls
+   - ✅ Connection messages: `logger.info()`
+   - ✅ Warning messages: `logger.warning()`
+   - ✅ Error messages: `logger.error()`
+   - ✅ All operational print() replaced (test section kept as-is)
+
+4. **Updated UI Files with Structured Error Handling:**
+   - ✅ `ui/pages/priorities.py` - Added logging, duckdb.Error, structured messages
+   - ✅ `ui/pages/species.py` - Added logging, duckdb.Error, structured messages
+   - ✅ `ui/pages/areas.py` - Added logging, duckdb.Error, structured messages
+   - ✅ `ui/pages/habitats.py` - Added logging, duckdb.Error, structured messages
+   - ✅ `ui/pages/grants.py` - Added logging, duckdb.Error, structured messages
+   - ✅ `ui/pages/measures.py` - Added logging, duckdb.Error, structured messages
+   - All UI files now have:
+     - `import logging` and `import duckdb`
+     - Logger instance created
+     - `except duckdb.Error as e:` with constraint/not found detection
+     - User-friendly error messages
+     - Comprehensive logging with `logger.exception()`
+
+5. **Testing:**
+   - ✅ Created `test_logging.py` test script
+   - ✅ Verified logging initialization
+   - ✅ Verified database connection logging
+   - ✅ Verified model operation logging
+   - ✅ Verified log file creation and content
+   - ✅ All tests passed successfully
+
+**Test Results:**
+```
+=== Test 1: Logging Initialization ===
+[OK] logs/ directory exists
+[OK] logs\transactions.log exists
+[OK] Logged messages at all levels
+
+=== Test 2: Database Logging ===
+[OK] Database connection established
+[OK] Query executed successfully: 168 measures found
+
+=== Test 3: Model Logging ===
+[OK] get_by_id returned None for non-existent record
+[OK] count() returned 168 measures
+
+=== Test 4: Log File Contents ===
+[OK] Log file has 167 lines
+```
+
+**Files Modified:** 16 total
+- `config/logging_config.py` - ✅ Created (new file)
+- `models/base.py` - ✅ Enhanced with logging
+- `config/database.py` - ✅ Enhanced with logging
+- `ui/pages/priorities.py` - ✅ Structured error handling
+- `ui/pages/species.py` - ✅ Structured error handling
+- `ui/pages/areas.py` - ✅ Structured error handling
+- `ui/pages/habitats.py` - ✅ Structured error handling
+- `ui/pages/grants.py` - ✅ Structured error handling
+- `ui/pages/measures.py` - ✅ Structured error handling
+- Plus 7 model files already updated in sections 1.1-1.3
+
 ### Phase 1 Testing
 
 **New File:** `tests/test_transactions.py`

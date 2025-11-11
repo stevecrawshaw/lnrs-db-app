@@ -1,9 +1,11 @@
 """Priorities page - View and manage biodiversity priorities."""
 
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 
+import duckdb
 import polars as pl
 import streamlit as st
 
@@ -13,6 +15,8 @@ sys.path.insert(0, str(project_root))
 
 from models.priority import PriorityModel  # noqa: E402
 from ui.components.tables import display_data_table  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 # Initialize model
 priority_model = PriorityModel()
@@ -235,8 +239,15 @@ def show_delete_confirmation(priority_id: int):
                 st.session_state.priority_view = "list"
                 st.session_state.selected_priority_id = None
                 st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error deleting priority: {str(e)}")
+            except duckdb.Error as e:
+                error_msg = str(e)
+                if "constraint" in error_msg.lower():
+                    st.error("❌ Cannot delete: This priority is referenced by other data")
+                elif "not found" in error_msg.lower():
+                    st.error("❌ Priority not found")
+                else:
+                    st.error(f"❌ Database error: {error_msg}")
+                logger.exception("Operation failed for user")
 
 
 def show_list_view():

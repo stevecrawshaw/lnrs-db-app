@@ -1,9 +1,11 @@
 """Grants page - View and manage grant funding information."""
 
+import logging
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+import duckdb
 import streamlit as st
 
 # Add project root to path
@@ -12,6 +14,8 @@ sys.path.insert(0, str(project_root))
 
 from models.grant import GrantModel  # noqa: E402
 from ui.components.tables import display_data_table  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 # Initialize model
 grant_model = GrantModel()
@@ -252,8 +256,15 @@ def show_delete_confirmation(grant_id: str):
                 st.session_state.grant_view = "list"
                 st.session_state.selected_grant_id = None
                 st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error deleting grant: {str(e)}")
+            except duckdb.Error as e:
+                error_msg = str(e)
+                if "constraint" in error_msg.lower():
+                    st.error("❌ Cannot delete: This grant is referenced by other data")
+                elif "not found" in error_msg.lower():
+                    st.error("❌ Grant not found")
+                else:
+                    st.error(f"❌ Database error: {error_msg}")
+                logger.exception("Operation failed for user")
 
 
 def show_list_view():
