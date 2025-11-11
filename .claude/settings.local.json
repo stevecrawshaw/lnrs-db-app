@@ -20,7 +20,9 @@
       "mcp__serena__edit_memory",
       "WebSearch",
       "WebFetch(domain:motherduck.com)",
-      "mcp__serena__search_for_pattern"
+      "mcp__serena__search_for_pattern",
+      "Bash(uv run pytest:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

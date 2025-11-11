@@ -107,6 +107,7 @@ class HabitatModel(BaseModel):
             "management_areas": len(management_areas),
         }
 
+    @db.with_snapshot("delete", "habitat")
     def delete_with_cascade(self, habitat_id: int) -> bool:
         """Delete a habitat and all its relationships.
 

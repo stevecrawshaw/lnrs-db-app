@@ -112,6 +112,7 @@ class SpeciesModel(BaseModel):
             "priorities": len(priorities),
         }
 
+    @db.with_snapshot("delete", "species")
     def delete_with_cascade(self, species_id: int) -> bool:
         """Delete a species and all its relationships.
 

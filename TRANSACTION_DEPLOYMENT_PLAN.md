@@ -1014,33 +1014,60 @@ def test_cleanup_old_snapshots(backup_mgr):
     assert len(snapshots) == 5
 ```
 
-### Phase 2 Deliverables
+### Phase 2 Deliverables - ✅ COMPLETED (2025-11-11)
 
-**New Files (2):**
-- `config/backup.py` - Backup/restore functionality (300+ lines)
-- `tests/test_backups.py` - Backup test suite
+**New Files (3):**
+- ✅ `config/backup.py` - Backup/restore functionality (~350 lines)
+- ✅ `tests/test_backups.py` - Backup test suite (~300 lines)
+- ✅ `tests/__init__.py` - Test package initialization
 
 **Modified Files (8):**
-- `config/database.py` - Add snapshot decorator
-- `models/measure.py` - Apply @with_snapshot decorator
-- `models/area.py` - Apply @with_snapshot decorator
-- `models/priority.py` - Apply @with_snapshot decorator
-- `models/species.py` - Apply @with_snapshot decorator
-- `models/habitat.py` - Apply @with_snapshot decorator
-- `models/grant.py` - Apply @with_snapshot decorator
-- `.gitignore` - Add `data/backups/*.duckdb` (keep metadata.json)
+- ✅ `config/database.py` - Add snapshot decorator
+- ✅ `models/measure.py` - Apply @with_snapshot decorator (line 296)
+- ✅ `models/area.py` - Apply @with_snapshot decorator (line 226)
+- ✅ `models/priority.py` - Apply @with_snapshot decorator (line 133)
+- ✅ `models/species.py` - Apply @with_snapshot decorator (line 115)
+- ✅ `models/habitat.py` - Apply @with_snapshot decorator (line 110)
+- ✅ `models/grant.py` - Apply @with_snapshot decorator (line 86)
+- ✅ `.gitignore` - Add `data/backups/*.duckdb` (keep metadata.json)
 
 **Success Criteria:**
-- [ ] Cloud environment detection works correctly
-- [ ] Backups enabled in local development mode
-- [ ] Backups gracefully disabled on Streamlit Cloud
-- [ ] Snapshots created automatically before all cascade deletes (local only)
-- [ ] Snapshots stored with descriptive metadata (local only)
-- [ ] Restore function works correctly (local only)
-- [ ] Cleanup function maintains retention policy (10 snapshots = ~330MB)
-- [ ] All tests pass (with environment mocking)
-- [ ] Clear logging when backups are disabled
-- [ ] No errors when disabled on cloud deployment
+- [x] Cloud environment detection works correctly ✅
+- [x] Backups enabled in local development mode ✅
+- [x] Backups gracefully disabled on Streamlit Cloud ✅
+- [x] Snapshots created automatically before all cascade deletes (local only) ✅
+- [x] Snapshots stored with descriptive metadata (local only) ✅
+- [x] Restore function works correctly (local only) ✅
+- [x] Cleanup function maintains retention policy (10 snapshots = ~330MB) ✅
+- [x] All tests pass (with environment mocking) ✅ (9/9 tests passing)
+- [x] Clear logging when backups are disabled ✅
+- [x] No errors when disabled on cloud deployment ✅
+
+**Test Results:**
+```
+tests/test_backups.py::test_backup_manager_initialization PASSED
+tests/test_backups.py::test_create_snapshot PASSED
+tests/test_backups.py::test_list_snapshots PASSED
+tests/test_backups.py::test_restore_snapshot PASSED
+tests/test_backups.py::test_cleanup_old_snapshots PASSED
+tests/test_backups.py::test_cloud_environment_detection_mock PASSED
+tests/test_backups.py::test_snapshot_on_disabled_manager PASSED
+tests/test_backups.py::test_restore_creates_safety_backup PASSED
+tests/test_backups.py::test_snapshot_metadata_structure PASSED
+
+9 passed in 1.75s
+```
+
+**Implementation Notes:**
+- BackupManager includes cloud detection via environment variables
+- `_detect_cloud_environment()` checks for STREAMLIT_SHARING_MODE and path indicators
+- All methods gracefully skip when `enabled=False` (cloud mode)
+- @with_snapshot decorator applied to all 6 entity delete methods
+- Snapshot metadata includes: timestamp, description, operation_type, entity_type, entity_id, file_path, size_mb
+- Retention policy: Keep 10 most recent snapshots (~330MB total)
+- Safety backup always created before restore operations
+
+**Phase 2 Status: 100% COMPLETE ✅**
 
 ---
 
@@ -2513,11 +2540,20 @@ def test_backups_disabled_on_cloud(mock_cloud_env):
 
 ---
 
-**Document Version:** 2.4
-**Last Updated:** 2025-11-11 (Added deployment considerations)
+**Document Version:** 2.5
+**Last Updated:** 2025-11-11 (Phase 2 completed)
 **Author:** Claude Code
-**Status:** PHASE 1 100% COMPLETE ✅ - Ready for Phase 2 (Backup Infrastructure)
-**Phase 1 Progress:**
-- ✅ Section 1.1: Delete operations 100% complete (6 entities, 2,373+ relationships tested)
-- ✅ Section 1.2: Relationship operations 100% complete (3/3 tests passing)
-- ✅ Section 1.3: Measure updates 100% complete (3/3 tests passing, fully atomic)
+**Status:** PHASE 2 100% COMPLETE ✅ - Ready for Phase 3 (Restore UI)
+
+**Overall Progress:**
+- ✅ **Phase 1 (100% COMPLETE)** - Core Transaction Implementation
+  - ✅ Section 1.1: Delete operations (6 entities, 2,373+ relationships tested)
+  - ✅ Section 1.2: Relationship operations (3/3 tests passing)
+  - ✅ Section 1.3: Measure updates (3/3 tests passing, fully atomic)
+- ✅ **Phase 2 (100% COMPLETE)** - Backup Infrastructure
+  - ✅ BackupManager class with cloud detection
+  - ✅ @with_snapshot decorator applied to all models
+  - ✅ Comprehensive test suite (9/9 tests passing)
+  - ✅ .gitignore configured for backup files
+- ⏳ **Phase 3 (PENDING)** - Restore UI (Week 4)
+- ⏳ **Phase 4 (PENDING)** - Testing & Monitoring (Week 5)

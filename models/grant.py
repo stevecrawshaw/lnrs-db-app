@@ -83,6 +83,7 @@ class GrantModel(BaseModel):
             "measure_area_priority_links": len(measures),
         }
 
+    @db.with_snapshot("delete", "grant")
     def delete_with_cascade(self, grant_id: str) -> bool:
         """Delete a grant and all its relationships atomically.
 

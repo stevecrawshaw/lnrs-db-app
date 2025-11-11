@@ -223,6 +223,7 @@ class AreaModel(BaseModel):
             "funding_schemes": len(funding_schemes),
         }
 
+    @db.with_snapshot("delete", "area")
     def delete_with_cascade(self, area_id: int) -> bool:
         """Delete an area and all its relationships.
 

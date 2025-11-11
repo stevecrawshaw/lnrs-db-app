@@ -7,8 +7,9 @@ for TEMP objects like macros.
 
 import logging
 import os
+from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import duckdb
 from dotenv import load_dotenv
@@ -22,6 +23,74 @@ try:
     HAS_STREAMLIT = True
 except ImportError:
     HAS_STREAMLIT = False
+
+
+def with_snapshot(operation_type: str, entity_type: str):
+    """Decorator to create snapshot before destructive operations.
+
+    Creates an automatic pre-operation snapshot before executing the wrapped function.
+    If backup functionality is disabled (e.g., on Streamlit Cloud), silently skips
+    snapshot creation.
+
+    Args:
+        operation_type: Type of operation (e.g., "delete", "update")
+        entity_type: Entity type (e.g., "measure", "area", "priority")
+
+    Usage:
+        @with_snapshot("delete", "measure")
+        def delete_with_cascade(self, measure_id: int):
+            # ... deletion code
+
+    Returns:
+        Decorated function that creates snapshot before execution
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            # Import here to avoid circular dependency
+            from config.backup import BackupManager
+
+            # Extract entity_id from kwargs or args
+            # Try multiple common parameter names and positions
+            entity_id = kwargs.get("id") or kwargs.get(f"{entity_type}_id")
+            if entity_id is None and len(args) > 1:
+                # First arg is usually 'self', second is often the ID
+                entity_id = args[1]
+
+            # Create snapshot (will be skipped if disabled)
+            backup_mgr = BackupManager()
+            description = f"Before {operation_type} {entity_type} {entity_id}"
+            snapshot_id = backup_mgr.create_snapshot(
+                description=description,
+                operation_type=operation_type,
+                entity_type=entity_type,
+                entity_id=entity_id,
+            )
+
+            if snapshot_id:
+                logger.info(f"Created pre-operation snapshot: {snapshot_id}")
+            else:
+                logger.debug(
+                    f"Snapshot skipped for {operation_type} {entity_type} {entity_id}"
+                )
+
+            # Execute original function
+            try:
+                result = func(*args, **kwargs)
+                logger.info(f"Operation {operation_type} completed successfully")
+                return result
+            except Exception as e:
+                logger.error(f"Operation {operation_type} failed: {e}")
+                if snapshot_id:
+                    logger.info(
+                        f"Database can be restored from snapshot: {snapshot_id}"
+                    )
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 class DatabaseConnection:

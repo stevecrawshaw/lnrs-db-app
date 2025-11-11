@@ -227,3 +227,7 @@ duckdb.exe
 duckdb
 config.yml
 environment-plan-evidence_files/
+
+# Backup files (keep metadata for tracking)
+data/backups/*.duckdb
+!data/backups/snapshot_metadata.json

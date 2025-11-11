@@ -130,6 +130,7 @@ class PriorityModel(BaseModel):
             "species": len(species),
         }
 
+    @db.with_snapshot("delete", "priority")
     def delete_with_cascade(self, priority_id: int) -> bool:
         """Delete a priority and all its relationships.
 
