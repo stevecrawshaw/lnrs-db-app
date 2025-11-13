@@ -5,7 +5,7 @@ import logging
 import duckdb
 import polars as pl
 
-from config.database import db
+from config.database import db, with_snapshot
 from models.base import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class GrantModel(BaseModel):
             "measure_area_priority_links": len(measures),
         }
 
-    @db.with_snapshot("delete", "grant")
+    @with_snapshot("delete", "grant")
     def delete_with_cascade(self, grant_id: str) -> bool:
         """Delete a grant and all its relationships atomically.
 

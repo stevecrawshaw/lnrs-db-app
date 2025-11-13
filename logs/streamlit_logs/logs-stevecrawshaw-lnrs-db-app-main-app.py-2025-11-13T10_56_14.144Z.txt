@@ -1,0 +1,186 @@
+
+[     UTC     ] Logs for lnrs-db-app-crud.streamlit.app/
+────────────────────────────────────────────────────────────────────────────────────────
+[09:29:05] 🚀 Starting up repository: 'lnrs-db-app', branch: 'main', main module: 'app.py'
+[09:29:05] 🐙 Cloning repository...
+[09:29:05] 🐙 Cloning into '/mount/src/lnrs-db-app'...
+
+[09:29:05] 🐙 Cloned repository!
+[09:29:05] 🐙 Pulling code changes from Github...
+[09:29:06] 📦 Processing dependencies...
+
+──────────────────────────────────────── uv ───────────────────────────────────────────
+
+Using uv pip install.
+Using Python 3.13.9 environment at /home/adminuser/venv
+Resolved 41 packages in 605ms
+Prepared 41 packages in 2.55s
+Installed 41 packages in 256ms
+ [2025-11-13 09:29:09.888712] + altair==5.5.0
+ + attrs==25.4.0
+ + blinker==1.9.0
+ + cachetools==6.2.1
+ + certifi==2025.11.12
+ + charset-normalizer==3.4.4
+ + click==8.3.0
+ + duckdb==1.4.2
+ + gitdb==4.0.12
+ + gitpython==3.1.45
+ + idna==3.11
+ + jinja2==3.1.6
+ + jsonschema==4.25.1
+ + jsonschema-specifications==2025.9.1
+ [2025-11-13 09:29:09.889050] + markupsafe==3.0.3
+ + narwhals==2.11.0
+ + numpy==2.3.4
+ + packaging==25.0
+ + pandas==2.3.3
+ + pillow==12.0.0
+ + polars==1.35.2
+ + polars-runtime-32==1.35.2
+ + protobuf==6.33.0
+ [2025-11-13 09:29:09.889288] + pyarrow==21.0.0
+ + pydeck==0.9.1
+ + python-dateutil==2.9.0.post0
+ + python-dotenv==1.2.1
+ + pytz==2025.2
+ + referencing==0.37.0
+ + requests==2.32.5[2025-11-13 09:29:09.889495] 
+ + rpds-py==0.28.0
+ + six==1.17.0
+ + smmap==5.0.2
+ + streamlit==1.51.0
+ + tenacity==9.1.2
+ + toml==0.10.2
+ + tornado==6.5.2
+ + typing-extensions==4.15.0
+ [2025-11-13 09:29:09.889720] + tzdata==2025.2
+ + urllib3==2.5.0
+ + watchdog==6.0.0
+Checking if Streamlit is installed
+Found Streamlit version 1.51.0 in the environment
+Installing rich for an improved exception logging
+Using uv pip install.
+Using Python 3.13.9 environment at /home/adminuser/venv
+Resolved 4 packages in 147ms
+Prepared 4 packages in 162ms
+Installed 4 packages in 16ms
+ + markdown-it-py==4.0.0
+ + mdurl==0.1.2
+ + pygments==2.19.2[2025-11-13 09:29:11.790996] 
+ + rich==14.2.0
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+[09:29:12] 🐍 Python dependencies were installed from /mount/src/lnrs-db-app/requirements.txt using uv.
+[09:29:12] 📦 WARN: More than one requirements file detected in the repository. Available options: uv /mount/src/lnrs-db-app/requirements.txt, poetry /mount/src/lnrs-db-app/pyproject.toml. Used: uv with /mount/src/lnrs-db-app/requirements.txt
+Check if streamlit is installed
+Streamlit is already installed
+[09:29:13] 📦 Processed dependencies!
+
+
+
+Connection test failed: Failed to connect to MotherDuck: Invalid Input Error: Initialization function "motherduck_duckdb_cpp_init" from file "/home/appuser/.duckdb/extensions/v1.4.2/linux_amd64/motherduck.duckdb_extension" threw an exception: "
+Your DuckDB version (v1.4.2) is not yet supported by MotherDuck. Please upgrade your DuckDB to v1.4.1.
+
+See https://motherduck.com/docs/getting-started/connect-query-from-duckdb-cli for more information."
+Database: lnrs_weca
+Please check your token and database name.
+────────────────────── Traceback (most recent call last) ───────────────────────
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/scriptru  
+  nner/exec_code.py:129 in exec_func_with_error_handling                        
+                                                                                
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/scriptru  
+  nner/script_runner.py:669 in code_to_exec                                     
+                                                                                
+  /mount/src/lnrs-db-app/app.py:48 in <module>                                  
+                                                                                
+    45 )                                                                        
+    46                                                                          
+    47 # Run the selected page                                                  
+  ❱ 48 pg.run()                                                                 
+    49                                                                          
+                                                                                
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/navigation/page.  
+  py:303 in run                                                                 
+                                                                                
+  /mount/src/lnrs-db-app/ui/pages/measures.py:15 in <module>                    
+                                                                                
+     12 project_root = Path(__file__).parent.parent.parent                      
+     13 sys.path.insert(0, str(project_root))                                   
+     14                                                                         
+  ❱  15 from models.measure import MeasureModel  # noqa: E402                   
+     16 from ui.components.tables import display_data_table  # noqa: E402       
+     17                                                                         
+     18 # Initialize model                                                      
+                                                                                
+  /mount/src/lnrs-db-app/models/measure.py:15 in <module>                       
+                                                                                
+     12 logger = logging.getLogger(__name__)                                    
+     13                                                                         
+     14                                                                         
+  ❱  15 class MeasureModel(BaseModel):                                          
+     16 │   """Model for managing measure entities."""                          
+     17 │                                                                       
+     18 │   @property                                                           
+                                                                                
+  /mount/src/lnrs-db-app/models/measure.py:296 in MeasureModel                  
+                                                                                
+    293 │   │   result = _self.execute_raw_query(query)                         
+    294 │   │   return result.pl()                                              
+    295 │                                                                       
+  ❱ 296 │   @db.with_snapshot("delete", "measure")                              
+    297 │   def delete_with_cascade(self, measure_id: int) -> bool:             
+    298 │   │   """Delete a measure and all its relationships.                  
+    299                                                                         
+────────────────────────────────────────────────────────────────────────────────
+AttributeError: 'DatabaseConnection' object has no attribute 'with_snapshot'
+────────────────────── Traceback (most recent call last) ───────────────────────
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/scriptru  
+  nner/exec_code.py:129 in exec_func_with_error_handling                        
+                                                                                
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/scriptru  
+  nner/script_runner.py:669 in code_to_exec                                     
+                                                                                
+  /mount/src/lnrs-db-app/app.py:48 in <module>                                  
+                                                                                
+    45 )                                                                        
+    46                                                                          
+    47 # Run the selected page                                                  
+  ❱ 48 pg.run()                                                                 
+    49                                                                          
+                                                                                
+  /home/adminuser/venv/lib/python3.13/site-packages/streamlit/navigation/page.  
+  py:303 in run                                                                 
+                                                                                
+  /mount/src/lnrs-db-app/ui/pages/measures.py:15 in <module>                    
+                                                                                
+     12 project_root = Path(__file__).parent.parent.parent                      
+     13 sys.path.insert(0, str(project_root))                                   
+     14                                                                         
+  ❱  15 from models.measure import MeasureModel  # noqa: E402                   
+     16 from ui.components.tables import display_data_table  # noqa: E402       
+     17                                                                         
+     18 # Initialize model                                                      
+                                                                                
+  /mount/src/lnrs-db-app/models/measure.py:15 in <module>                       
+                                                                                
+     12 logger = logging.getLogger(__name__)                                    
+     13                                                                         
+     14                                                                         
+  ❱  15 class MeasureModel(BaseModel):                                          
+     16 │   """Model for managing measure entities."""                          
+     17 │                                                                       
+     18 │   @property                                                           
+                                                                                
+  /mount/src/lnrs-db-app/models/measure.py:296 in MeasureModel                  
+                                                                                
+    293 │   │   result = _self.execute_raw_query(query)                         
+    294 │   │   return result.pl()                                              
+    295 │                                                                       
+  ❱ 296 │   @db.with_snapshot("delete", "measure")                              
+    297 │   def delete_with_cascade(self, measure_id: int) -> bool:             
+    298 │   │   """Delete a measure and all its relationships.                  
+    299                                                                         
+────────────────────────────────────────────────────────────────────────────────
+AttributeError: 'DatabaseConnection' object has no attribute 'with_snapshot'

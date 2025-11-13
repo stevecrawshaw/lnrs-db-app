@@ -5,7 +5,7 @@ import logging
 import duckdb
 import polars as pl
 
-from config.database import db
+from config.database import db, with_snapshot
 from models.base import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -223,7 +223,7 @@ class AreaModel(BaseModel):
             "funding_schemes": len(funding_schemes),
         }
 
-    @db.with_snapshot("delete", "area")
+    @with_snapshot("delete", "area")
     def delete_with_cascade(self, area_id: int) -> bool:
         """Delete an area and all its relationships.
 

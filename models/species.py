@@ -5,7 +5,7 @@ import logging
 import duckdb
 import polars as pl
 
-from config.database import db
+from config.database import db, with_snapshot
 from models.base import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class SpeciesModel(BaseModel):
             "priorities": len(priorities),
         }
 
-    @db.with_snapshot("delete", "species")
+    @with_snapshot("delete", "species")
     def delete_with_cascade(self, species_id: int) -> bool:
         """Delete a species and all its relationships.
 

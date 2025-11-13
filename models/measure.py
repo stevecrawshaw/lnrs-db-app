@@ -6,7 +6,7 @@ import duckdb
 import polars as pl
 import streamlit as st
 
-from config.database import db
+from config.database import db, with_snapshot
 from models.base import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -293,7 +293,7 @@ class MeasureModel(BaseModel):
         result = _self.execute_raw_query(query)
         return result.pl()
 
-    @db.with_snapshot("delete", "measure")
+    @with_snapshot("delete", "measure")
     def delete_with_cascade(self, measure_id: int) -> bool:
         """Delete a measure and all its relationships.
 
