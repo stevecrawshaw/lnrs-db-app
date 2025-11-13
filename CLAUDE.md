@@ -119,6 +119,112 @@ For `measure_type` and `stakeholder` tables, use sequences:
 - `seq_measure_type_id`
 - `seq_stakeholder_id`
 
+## Transaction & Backup System
+
+The application includes a comprehensive transaction and backup system to protect data integrity and enable recovery from mistakes.
+
+### Automatic Snapshots
+
+**All destructive operations automatically create database snapshots before execution:**
+
+- **Delete operations**: Measures, areas, priorities, species, habitats, grants
+- **Pre-restore safety backup**: Created automatically before any restore operation
+
+Snapshots are created using the `@with_snapshot` decorator:
+```python
+from config.transactions import with_snapshot
+
+@with_snapshot("delete", "measure")
+def delete_with_cascade(self, measure_id: int) -> bool:
+    # Snapshot created automatically before execution
+    # Operation executes...
+    return True
+```
+
+### DuckDB Transaction Limitations
+
+**IMPORTANT**: DuckDB enforces foreign key constraints immediately during transactions, which has implications for delete operations:
+
+- **Sequential deletes required**: Parent record deletes cannot be atomic because child records must be deleted first
+- **Updates ARE atomic**: Update operations with relationships are fully atomic
+- **No true CASCADE DELETE**: DuckDB's `ON DELETE CASCADE` is not reliable; manual cascade delete is required
+
+This is why `delete_with_cascade()` methods perform sequential deletes across related tables.
+
+### Manual Backup & Restore
+
+Access the Backup & Restore UI via the 💾 icon in the navigation menu.
+
+**Creating Manual Snapshots:**
+1. Navigate to Backup & Restore → Create Backup tab
+2. Add a descriptive note
+3. Click "Create Snapshot"
+4. Snapshot is saved in `data/backups/` directory
+
+**Restoring from Snapshots:**
+1. Navigate to Backup & Restore → Snapshots tab
+2. Filter snapshots by operation type or entity if needed
+3. Preview snapshot data before restore
+4. Enter "RESTORE" in confirmation dialog
+5. System creates safety backup automatically before restore
+6. Database is restored to selected snapshot state
+
+**⚠️ Cloud Deployment**: Backup functionality is automatically disabled on Streamlit Cloud (ephemeral filesystem). Local development only.
+
+### Snapshot Management
+
+**Automatic cleanup** keeps the 10 most recent snapshots:
+```python
+from config.backup import BackupManager
+backup_mgr = BackupManager()
+deleted_count = backup_mgr.cleanup_old_snapshots(keep_count=10)
+```
+
+**Snapshot metadata** stored in `data/backups/snapshot_metadata.json`:
+- Timestamp and description
+- Operation type (delete, update, manual, etc.)
+- Entity type and ID
+- File path and size
+
+### Monitoring & Logging
+
+**Performance monitoring** tracks operation duration:
+```python
+from config.monitoring import monitor_performance
+
+@monitor_performance("operation_name")
+def my_operation():
+    # Execution time logged automatically
+    # Warnings issued if operation takes >5 seconds
+    pass
+```
+
+**Separate log files** for different operation types:
+- `logs/transactions.log`: All database operations (detailed)
+- `logs/backups.log`: Backup and restore operations only
+- `logs/performance.log`: Performance metrics and timing
+- Console: Warnings and errors only
+
+### Best Practices
+
+1. **Always review before delete**: Deletions are sequential and create snapshots, but prevention is best
+2. **Use restore hints**: After any delete, the UI shows restore instructions
+3. **Preview before restore**: Use the preview feature to verify snapshot contents
+4. **Monitor performance logs**: Check for slow operations (>5 seconds)
+5. **Regular cleanup**: Old snapshots consume disk space; cleanup is automatic but can be manual
+
+### Testing
+
+Comprehensive test suite in `tests/`:
+- `test_transactions.py`: Transaction behavior and cascade deletes
+- `test_backup_restore_integration.py`: Backup/restore integration
+- `test_end_to_end.py`: Full lifecycle and time-travel tests
+
+Run tests with:
+```bash
+uv run pytest tests/ -v
+```
+
 ## Data Files Location
 
 Source data files are expected in `data/` directory:
@@ -126,6 +232,7 @@ Source data files are expected in `data/` directory:
 - Main database: `data/lnrs_3nf_o1.duckdb`
 - Schema: `lnrs_3nf_o1.sql` (root directory)
 - Geospatial data: `data/lnrs-sub-areas.parquet`
+- **Backups**: `data/backups/` (snapshots and metadata)
 
 ## Important Constraints
 

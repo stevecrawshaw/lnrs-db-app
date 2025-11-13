@@ -28,6 +28,8 @@ if "show_edit_form" not in st.session_state:
     st.session_state.show_edit_form = False
 if "show_delete_confirm" not in st.session_state:
     st.session_state.show_delete_confirm = False
+if "delete_success_message" not in st.session_state:
+    st.session_state.delete_success_message = None
 
 
 def validate_url(url: str) -> bool:
@@ -233,7 +235,8 @@ def show_delete_confirmation(area_id: int):
         if st.button("🗑️ Delete Area", type="primary", width="stretch"):
             try:
                 area_model.delete_with_cascade(area_id)
-                st.success(f"✅ Successfully deleted area ID {area_id}!")
+                # Store success message to show after rerun
+                st.session_state.delete_success_message = f"Successfully deleted area ID {area_id}!"
                 st.session_state.show_delete_confirm = False
                 st.session_state.area_view = "list"
                 st.session_state.selected_area_id = None
@@ -245,6 +248,13 @@ def show_delete_confirmation(area_id: int):
 def show_list_view():
     """Display list of all areas with relationship counts."""
     st.title("🗺️ Priority Areas")
+
+    # Show delete success message with restore hint if present
+    if st.session_state.delete_success_message:
+        st.success(f"✅ {st.session_state.delete_success_message}")
+        st.info("💡 **Tip:** If you need to undo this change, visit the **Backup & Restore** page (💾 in the navigation menu).")
+        # Clear the message after displaying
+        st.session_state.delete_success_message = None
 
     # Create button
     if st.button("➕ Create New Area", type="primary"):

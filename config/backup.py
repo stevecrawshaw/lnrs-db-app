@@ -15,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from config.monitoring import monitor_performance
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +78,7 @@ class BackupManager:
 
         return is_cloud
 
+    @monitor_performance("snapshot_create")
     def create_snapshot(
         self,
         description: str,
@@ -193,6 +196,7 @@ class BackupManager:
 
         return snapshots
 
+    @monitor_performance("snapshot_restore")
     def restore_snapshot(self, snapshot_id: str) -> bool:
         """Restore database from a snapshot.
 

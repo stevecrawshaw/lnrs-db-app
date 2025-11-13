@@ -29,6 +29,8 @@ if "show_edit_form" not in st.session_state:
     st.session_state.show_edit_form = False
 if "show_delete_confirm" not in st.session_state:
     st.session_state.show_delete_confirm = False
+if "delete_success_message" not in st.session_state:
+    st.session_state.delete_success_message = None
 
 
 def validate_url(url: str) -> bool:
@@ -416,7 +418,8 @@ def show_delete_confirmation(measure_id: int):
         if st.button("🗑️ Delete Measure", type="primary", width="stretch"):
             try:
                 measure_model.delete_with_cascade(measure_id)
-                st.success(f"✅ Successfully deleted measure ID {measure_id}!")
+                # Store success message to show after rerun
+                st.session_state.delete_success_message = f"Successfully deleted measure ID {measure_id}!"
                 # Clear caches to ensure fresh data is loaded
                 st.cache_data.clear()
                 st.session_state.show_delete_confirm = False
@@ -430,6 +433,13 @@ def show_delete_confirmation(measure_id: int):
 def show_list_view():
     """Display list of all measures with types, stakeholders, and counts."""
     st.title("📋 Biodiversity Measures")
+
+    # Show delete success message with restore hint if present
+    if st.session_state.delete_success_message:
+        st.success(f"✅ {st.session_state.delete_success_message}")
+        st.info("💡 **Tip:** If you need to undo this change, visit the **Backup & Restore** page (💾 in the navigation menu).")
+        # Clear the message after displaying
+        st.session_state.delete_success_message = None
 
     # Create button
     if st.button("➕ Create New Measure", type="primary"):
