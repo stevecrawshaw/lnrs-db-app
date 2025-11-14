@@ -25,6 +25,14 @@ st.markdown(
         border: 1px solid #e0e0e0;
         border-radius: 8px;
     }
+    /* Align expander and button vertically */
+    [data-testid="column"] {
+        display: flex;
+        align-items: flex-start;
+    }
+    [data-testid="column"] > div {
+        width: 100%;
+    }
 </style>
 """,
     unsafe_allow_html=True,
@@ -63,7 +71,6 @@ with col1:
         )
 
 with col2:
-    st.markdown("")  # Spacer for alignment
     st.link_button(
         "🔗 Open Full Page",
         FULL_PAGE_URL,
