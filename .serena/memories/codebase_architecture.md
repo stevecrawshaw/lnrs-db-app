@@ -19,6 +19,7 @@ Navigation is handled through Streamlit's built-in page navigation.
 #### Pages (`ui/pages/`)
 Each page corresponds to a major entity:
 - **home.py**: Dashboard with statistics
+- **schema.py**: Interactive ER diagram visualization (React-based, embedded from Claude artifact)
 - **measures.py**: Measures CRUD operations
 - **areas.py**: Areas CRUD operations
 - **priorities.py**: Priorities CRUD operations
@@ -27,6 +28,7 @@ Each page corresponds to a major entity:
 - **habitats.py**: Habitats CRUD operations
 - **relationships.py**: Manage many-to-many relationships
 - **data_export.py**: Export data to CSV
+- **backup_restore.py**: Backup and restore functionality
 
 #### Components (`ui/components/`)
 Reusable UI components:

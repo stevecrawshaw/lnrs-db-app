@@ -75,6 +75,7 @@ This application enables the LNRS manager to:
 ### 🎨 User Experience
 - **Responsive Design** works on all screen sizes
 - **Intuitive Navigation** with organized entity and relationship sections
+- **Interactive Schema Diagram** with React-based ER visualization and full-page view
 - **Real-time Feedback** with success/error messages and restore hints
 - **Dashboard View** with database statistics and recent activity
 
@@ -273,7 +274,8 @@ The application is organized into logical sections:
 ```
 📁 LNRS Database Manager
 ├── 🏠 Main
-│   └── Dashboard (Overview, statistics, recent activity)
+│   ├── Dashboard (Overview, statistics, recent activity)
+│   └── Schema (Interactive ER diagram visualization)
 ├── 📋 Entities
 │   ├── Measures (Biodiversity measures and actions)
 │   ├── Areas (Priority areas for conservation)
@@ -294,6 +296,7 @@ The application is organized into logical sections:
 | Page | Purpose | Key Features |
 |------|---------|--------------|
 | **Dashboard** | Overview and statistics | Entity counts, recent activity, system status |
+| **Schema** | Database structure visualization | Interactive ER diagram, full-page view, relationship explorer |
 | **Measures** | Biodiversity actions | CRUD operations, relationship links, cascade delete |
 | **Areas** | Priority areas | Geographic data, funding schemes, linked measures |
 | **Priorities** | Conservation priorities | Theme grouping, area/measure associations |
@@ -310,7 +313,16 @@ The application is organized into logical sections:
 
 ### Schema Overview
 
-The database follows a **normalized 3NF (Third Normal Form)** design with 20+ tables:
+The database follows a **normalized 3NF (Third Normal Form)** design with 20+ tables.
+
+**🗂️ Interactive Schema Visualization**: View the complete database structure with an interactive Entity-Relationship diagram on the **Schema** page in the application. The diagram shows all tables, relationships, and provides zoom/pan controls for easy navigation.
+
+**Quick Access**:
+- In the app, navigate to **🗂️ Schema** under "Main" in the sidebar
+- Click **"🔗 Open Full Page"** for full-screen viewing
+- Hosted as a React-based interactive diagram with color-coded table types
+
+### Database Tables
 
 #### Core Tables (Entities)
 
@@ -630,7 +642,10 @@ Already covered in [Running the Application](#running-the-application)
 
 ### Key Documentation Sections
 
-- **Database Schema**: See `lnrs_3nf_o1.sql` and `lnrs_3nf_o1_schema.xml`
+- **Database Schema**:
+  - Visual: Interactive ER diagram on Schema page (🗂️ in app)
+  - SQL: `lnrs_3nf_o1.sql`
+  - XML: `lnrs_3nf_o1_schema.xml`
 - **API Reference**: Inline docstrings in `models/` and `config/`
 - **Testing Guide**: See test files in `tests/` for examples
 - **Deployment Guide**: `DEPLOYMENT.md`

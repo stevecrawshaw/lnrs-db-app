@@ -74,13 +74,15 @@ lnrs-db-app/
 
 ## Key Features
 1. **Dual Database Mode**: Switch between local DuckDB and MotherDuck cloud database
-2. **Responsive Design**: Works on different screen sizes
-3. **Foreign Key Enforcement**: Respects cascading deletes
-4. **Error Handling**: Comprehensive error handling for database operations
-5. **Data Export**: Export data to CSV format
-6. **URL Validation**: Ensures grant records have valid URLs
-7. **Transaction Support**: Atomic update operations with comprehensive logging (Phase 1 in progress)
-8. **Comprehensive Logging**: Step-by-step operation logging to `logs/transactions.log`
+2. **Interactive Schema Visualization**: React-based ER diagram with zoom/pan controls and full-page view
+3. **Responsive Design**: Works on different screen sizes
+4. **Foreign Key Enforcement**: Respects cascading deletes
+5. **Error Handling**: Comprehensive error handling for database operations
+6. **Data Export**: Export data to CSV format
+7. **URL Validation**: Ensures grant records have valid URLs
+8. **Transaction Support**: Atomic update operations with comprehensive logging
+9. **Backup & Restore**: Automatic snapshots before deletes, manual backup creation, point-in-time recovery
+10. **Comprehensive Logging**: Step-by-step operation logging to `logs/transactions.log`, `logs/backups.log`, `logs/performance.log`
 
 ## Transaction Implementation Status (Phase 1)
 
