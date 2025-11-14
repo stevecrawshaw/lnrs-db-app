@@ -42,6 +42,48 @@ The database uses a normalized 3NF schema with the following core structure:
 - **source_table_recreated_vw**: Recreates the original denormalized data by joining all tables
 - **apmg_slim_vw**: Slimmed down view for the app with key fields only
 
+## Schema Visualization
+
+The database schema is visualized using an interactive React-based ERD hosted as a Claude artifact. Users can access this visualization through the Schema page in the Streamlit app.
+
+### Artifact URLs
+
+- **Embed URL** (used in app): `https://claude.site/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52/embed`
+- **Full-page URL**: `https://claude.ai/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52`
+
+### Implementation Details
+
+**File:** `ui/pages/schema.py`
+
+The schema page is a simple iframe embed of the React ERD with:
+- Full viewport height (1200px) for better viewing
+- "Open Full Page" button to view in a new tab
+- Interactive zoom and pan controls
+- Clean, minimal implementation (~94 lines vs 240+ lines for Mermaid version)
+
+### Updating the Schema Diagram
+
+To update the ERD when the database schema changes:
+
+1. Edit the React artifact at: https://claude.ai/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52
+2. Make changes to the React component (update tables, relationships, etc.)
+3. Changes reflect immediately - no deployment needed
+4. If the artifact ID changes, update the constants in `ui/pages/schema.py`:
+   - `EMBED_URL`
+   - `FULL_PAGE_URL`
+
+### Backup Approach
+
+The previous Mermaid-based schema generator is preserved as a backup:
+- **File:** `utils/schema_diagram_mermaid_backup.py`
+- **Backup page:** `ui/pages/schema_mermaid_backup.py`
+
+This can be used for:
+- Generating static diagram exports
+- Offline schema visualization
+- Alternative visualization needs
+- Automatic diagram generation from `lnrs_3nf_o1_schema.xml`
+
 ## Development Commands
 
 ### Setup and Installation

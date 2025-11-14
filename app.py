@@ -18,6 +18,7 @@ st.set_page_config(
 
 # Define pages
 home_page = st.Page("ui/pages/home.py", title="Dashboard", icon="🏠")
+schema_page = st.Page("ui/pages/schema.py", title="Schema", icon="🗂️")
 measures_page = st.Page("ui/pages/measures.py", title="Measures", icon="📋")
 areas_page = st.Page("ui/pages/areas.py", title="Areas", icon="🗺️")
 priorities_page = st.Page("ui/pages/priorities.py", title="Priorities", icon="🎯")
@@ -31,7 +32,7 @@ backup_restore_page = st.Page("ui/pages/backup_restore.py", title="Backup & Rest
 # Create navigation
 pg = st.navigation(
     {
-        "Main": [home_page],
+        "Main": [home_page, schema_page],
         "Entities": [
             measures_page,
             areas_page,
