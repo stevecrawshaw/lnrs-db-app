@@ -22,7 +22,9 @@
       "WebFetch(domain:motherduck.com)",
       "mcp__serena__search_for_pattern",
       "Bash(uv run pytest:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "mcp__faf__faf_about",
+      "mcp__faf__faf_init"
     ],
     "deny": [],
     "ask": []

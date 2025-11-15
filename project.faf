@@ -1,0 +1,427 @@
+# FAF - Foundational AI Context
+project: lnrs-db-app
+type: data_management_application
+context: I⚡🍊
+generated: 2025-11-15T11:53:55.094Z
+version: 3.3.1
+
+
+# The Formula
+human_input: Your project files
+multiplier: FAF Context
+output: 105% Big Orange Performance
+
+# Quick Context
+working_directory: /home/steve/projects/lnrs-db-app
+initialized_by: claude-faf-mcp
+vitamin_context: true
+faffless: true
+
+
+## Project Overview
+
+**Name**: LNRS Database Management Application
+**Purpose**: Comprehensive CRUD application for managing Local Nature Recovery Strategy (LNRS) biodiversity data
+**Status**: Production ready - All phases complete ✅
+**Version**: 3.0
+
+### What This Application Does
+This is a Streamlit-based web application that manages biodiversity conservation data for the West of England. It tracks:
+- 780+ biodiversity measures and recommendations
+- 50 priority areas for conservation (mapped to 694 geographic polygons)
+- 33 biodiversity priorities grouped by environmental themes
+- 39 species of importance with GBIF (Global Biodiversity Information Facility) integration
+- Habitat types for creation and management
+- Grant opportunities and funding schemes for landowners
+- Complex many-to-many relationships between all entities
+
+### Key Features
+- Full CRUD operations for all entity types
+- Dual-mode deployment: local DuckDB or cloud MotherDuck database
+- Automatic backup system with snapshot creation before all deletes
+- Point-in-time recovery with snapshot preview
+- Transaction support with comprehensive logging
+- Interactive React-based ER diagram for schema visualization
+- CSV data export functionality
+- Responsive UI that works on all screen sizes
+
+## Technology Stack
+
+### Core Technologies
+- **Python**: 3.13+ (required)
+- **Web Framework**: Streamlit 1.50.0+ (multipage application)
+- **Database**: DuckDB 1.4.1 (local) / MotherDuck (cloud production)
+- **Data Manipulation**: Polars 1.34.0+ and DuckDB's relational Python API
+- **Package Manager**: uv (fast, modern Python package manager)
+
+### Key Dependencies
+```toml
+duckdb==1.4.1
+streamlit>=1.50.0
+polars>=1.34.0
+pyarrow>=21.0.0
+python-dotenv>=1.2.1
+sqlfluff>=3.5.0
+ipykernel>=7.1.0
+```
+
+### Development Tools
+- **Linting/Formatting**: Ruff 0.14.3+
+- **Testing**: pytest 8.4+
+- **Version Control**: Git
+
+## Project Architecture
+
+### Directory Structure
+```
+lnrs-db-app/
+├── app.py                      # Main Streamlit application entry point
+├── models/                     # Data models with CRUD operations
+│   ├── base.py                # BaseModel class with common CRUD methods
+│   ├── measure.py             # Measure model (780+ biodiversity actions)
+│   ├── area.py                # Area model (50 priority areas)
+│   ├── priority.py            # Priority model (33 conservation priorities)
+│   ├── species.py             # Species model (39 important species)
+│   ├── grant.py               # Grant model (funding opportunities)
+│   ├── habitat.py             # Habitat model (creation/management)
+│   └── relationship.py        # Many-to-many relationship management
+├── ui/                        # User interface components
+│   ├── pages/                 # Streamlit pages (13 pages total)
+│   │   ├── home.py           # Dashboard with statistics
+│   │   ├── schema.py         # Interactive ER diagram (React artifact embed)
+│   │   ├── measures.py       # Measure CRUD page
+│   │   ├── areas.py          # Area CRUD page
+│   │   ├── priorities.py     # Priority CRUD page
+│   │   ├── species.py        # Species CRUD page
+│   │   ├── grants.py         # Grant CRUD page
+│   │   ├── habitats.py       # Habitat CRUD page
+│   │   ├── relationships.py  # Relationship management page
+│   │   ├── data_export.py    # CSV export functionality
+│   │   └── backup_restore.py # Backup/restore UI (local mode only)
+│   └── components/            # Reusable UI components
+│       ├── database_selector.py  # Local/MotherDuck mode switcher
+│       └── tables.py          # Data table display components
+├── config/                    # Configuration and infrastructure
+│   ├── database.py           # DatabaseConnection singleton (local/cloud)
+│   ├── transactions.py       # Transaction decorator and logging
+│   ├── backup.py             # BackupManager for snapshots
+│   └── monitoring.py         # Performance monitoring decorator
+├── utils/                     # Utility functions
+│   └── schema_diagram_mermaid_backup.py  # Backup schema generator
+├── data/                      # Database files
+│   ├── lnrs_3nf_o1.duckdb    # Main database (33MB, local mode)
+│   ├── backups/              # Automatic snapshots (local mode only)
+│   │   ├── *.duckdb          # Snapshot files
+│   │   └── snapshot_metadata.json  # Snapshot metadata
+│   └── lnrs-sub-areas.parquet  # Geographic polygon data
+├── logs/                      # Application logs
+│   ├── transactions.log      # All database operations (detailed)
+│   ├── backups.log           # Backup/restore operations
+│   └── performance.log       # Operation timing and warnings
+├── tests/                     # Comprehensive test suite
+│   ├── conftest.py           # Pytest fixtures and test DB setup
+│   ├── test_transactions.py  # Transaction atomicity tests
+│   ├── test_backup_restore_integration.py  # Backup/restore workflows
+│   └── test_end_to_end.py    # Full lifecycle tests
+├── docs/                      # Additional documentation
+├── .streamlit/                # Streamlit configuration
+│   └── config.toml           # App theme and settings
+├── lnrs_3nf_o1.sql           # Database schema SQL (root directory)
+├── lnrs_3nf_o1_schema.xml    # Schema XML representation
+├── pyproject.toml            # Project dependencies and metadata
+├── uv.lock                   # Locked dependency versions
+├── CLAUDE.md                 # Developer guide (AI assistant instructions)
+├── README.md                 # User documentation
+├── DEPLOYMENT.md             # Deployment guide (Streamlit Cloud)
+├── TRANSACTION_DEPLOYMENT_PLAN.md  # Transaction system implementation
+└── DUCKDB_FK_LIMITATION.md   # Technical notes on FK constraints
+```
+
+### Data Models Architecture
+
+All models inherit from `BaseModel` (`models/base.py`) which provides:
+- Common CRUD operations (create, read, update, delete)
+- Database connection management via singleton pattern
+- Transaction support with logging
+- Backup integration with `@with_snapshot` decorator
+
+**Model Classes**:
+- `Measure`: Biodiversity measures with cascade delete handling
+- `Area`: Priority areas with geographic polygon links
+- `Priority`: Conservation priorities with theme grouping
+- `Species`: Species data with GBIF integration
+- `Grant`: Funding opportunities with URL validation
+- `Habitat`: Habitat types with creation/management area links
+- `Relationship`: Many-to-many relationship manager
+
+### Database Architecture
+
+**Schema**: Normalized 3NF (Third Normal Form) with 20+ tables
+
+**Core Tables**:
+- `measure` (780+ records): Biodiversity actions/recommendations
+- `area` (50 records): Priority areas linked to polygons
+- `priority` (33 records): Biodiversity priorities by theme
+- `species` (39 records): Important species with GBIF taxonomy
+- `grant_table` (variable): Financial incentives for landowners
+- `habitat` (variable): Habitat types
+- `benefits` (variable): Benefits delivered by measures
+
+**Bridge Tables** (Many-to-Many Relationships):
+- `measure_has_type`: Measure classification
+- `measure_has_stakeholder`: Stakeholder responsibilities
+- `measure_area_priority`: Core three-way relationship (measure-area-priority)
+- `measure_area_priority_grant`: Grant associations
+- `species_area_priority`: Species conservation priorities
+- `measure_has_benefits`: Benefit associations
+- `measure_has_species`: Species-measure links
+- `habitat_creation_area`: Habitat creation locations
+- `habitat_management_area`: Habitat management locations
+
+**Important Views**:
+- `source_table_recreated_vw`: Denormalized view recreating original source data
+- `apmg_slim_vw`: Slimmed view for LNRS Toolkit with essential fields
+
+**Database Files**:
+- Local: `data/lnrs_3nf_o1.duckdb` (33MB)
+- Cloud: MotherDuck `lnrs_weca` database
+- Schema: `lnrs_3nf_o1.sql` (root directory)
+- Geospatial: `data/lnrs-sub-areas.parquet`
+
+### Schema Visualization
+
+The app includes an **interactive React-based ER diagram** embedded as a Claude artifact:
+- **Page**: `ui/pages/schema.py`
+- **Embed URL**: https://claude.site/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52/embed
+- **Full-page URL**: https://claude.ai/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52
+- **Features**: Color-coded tables, interactive zoom/pan, relationship explorer
+- **Implementation**: Simple iframe embed (~94 lines vs 240+ for Mermaid)
+
+**Updating the diagram**: Edit the React artifact directly; changes reflect immediately.
+
+### Transaction & Backup System
+
+**Key Implementation Details**:
+
+1. **Automatic Snapshots**:
+   - All delete operations create database snapshots before execution
+   - Decorator pattern: `@with_snapshot("delete", "measure")`
+   - Storage: `data/backups/*.duckdb` (local mode only)
+   - Naming: `YYYYMMDD_HHMMSS_operation_entity_id.duckdb`
+
+2. **DuckDB Foreign Key Limitation**:
+   - ⚠️ DuckDB enforces FK constraints immediately during transactions
+   - **Impact**: Parent record deletes cannot be atomic; child records must be deleted first
+   - **Solution**: Sequential delete approach with comprehensive logging
+   - **Updates ARE atomic**: All update operations use proper transactions
+
+3. **Cascade Delete Pattern**:
+   ```python
+   # Example: Delete a measure
+   # 1. Delete from measure_has_type where measure_id matches
+   # 2. Delete from measure_has_stakeholder where measure_id matches
+   # 3. Delete from measure_area_priority_grant where measure_id matches
+   # 4. Delete from measure_area_priority where measure_id matches
+   # 5. Delete from measure_has_benefits where measure_id matches
+   # 6. Delete from measure_has_species where measure_id matches
+   # 7. Finally delete from measure
+   ```
+
+4. **Restore Process**:
+   - Navigate to Backup & Restore page
+   - Filter/preview snapshots
+   - Confirm with "RESTORE" text
+   - Safety backup created automatically before restore
+   - Database verified after restore
+
+5. **Logging**:
+   - `logs/transactions.log`: All DB operations (step-by-step)
+   - `logs/backups.log`: Snapshot create/restore/cleanup
+   - `logs/performance.log`: Operation timing (warns if >5 seconds)
+
+### Deployment Modes
+
+**Local Development Mode**:
+- Database: File-based DuckDB (`data/lnrs_3nf_o1.duckdb`)
+- Backup: Full functionality with snapshots
+- Configuration: `DATABASE_MODE=local` in `.env`
+- Features: All functionality enabled
+
+**Cloud Production Mode (Streamlit Cloud)**:
+- Database: MotherDuck cloud database (`lnrs_weca`)
+- Backup: UI shows informational message (ephemeral filesystem)
+- Configuration: `DATABASE_MODE=motherduck` with token in secrets
+- Features: CRUD operations, MotherDuck provides infrastructure reliability
+
+## Development Workflow
+
+### Setup Commands
+```bash
+# Clone repository
+git clone <repository-url>
+cd lnrs-db-app
+
+# Install dependencies
+uv sync
+
+# Configure environment
+echo "DATABASE_MODE=local" > .env
+
+# Run application
+streamlit run app.py
+```
+
+### Testing
+```bash
+# Run all tests
+uv run pytest tests/ -v
+
+# Run specific test file
+uv run pytest tests/test_transactions.py -v
+
+# Run with coverage
+uv run pytest tests/ --cov=models --cov=config --cov-report=html
+```
+
+### Code Quality
+```bash
+# Check formatting
+ruff check .
+
+# Format code
+ruff format .
+
+# SQL formatting
+sqlfluff format lnrs_3nf_o1.sql --dialect duckdb
+```
+
+## Important Constraints & Rules
+
+### Database Operations
+1. **Use DuckDB's relational Python API** wherever possible for data manipulation
+2. **Respect CASCADE deletes** - always delete child records before parent records
+3. **Generate new IDs using macros**: `CREATE MACRO max_meas() AS (SELECT MAX(measure_id) + 1 FROM measure);`
+4. **Grant records without valid URLs** should not be added to the database
+5. **CSV files use semicolon (;) delimiter**, not comma
+
+### Code Style
+- **Python**: PEP 8 with 4 spaces indentation, enforced by Ruff
+- **SQL**: 4 spaces indentation, SQLFluff with DuckDB dialect
+- **Type hints**: Required for function signatures
+- **Docstrings**: Required for all public functions/classes
+
+### Transaction Rules
+- **Updates**: Always use transactions for atomic operations
+- **Deletes**: Sequential approach due to DuckDB limitation (snapshots provide safety)
+- **Creates**: Validate data before insertion
+- **Relationships**: Atomic additions/removals using transactions
+
+## Key Configuration Files
+
+### pyproject.toml
+Project dependencies and metadata:
+- Python >=3.13
+- Core dependencies: duckdb, streamlit, polars, pyarrow
+- Dev dependencies: ruff
+
+### .env (Local Development)
+```bash
+DATABASE_MODE=local
+```
+
+### Streamlit Secrets (Cloud Production)
+```toml
+DATABASE_MODE = "motherduck"
+database_name = "lnrs_weca"
+motherduck_token = "YOUR_TOKEN_HERE"
+```
+
+### .streamlit/config.toml
+Streamlit app configuration:
+- Theme settings
+- Server configuration
+- UI customization
+
+## Documentation Files
+
+- **CLAUDE.md**: Developer guide with detailed architecture and coding rules
+- **README.md**: User documentation with setup, features, and troubleshooting
+- **DEPLOYMENT.md**: Step-by-step deployment guide for Streamlit Cloud
+- **TRANSACTION_DEPLOYMENT_PLAN.md**: Complete transaction system implementation (4 phases)
+- **DUCKDB_FK_LIMITATION.md**: Technical analysis of foreign key constraint behavior
+- **FK_ANALYSIS.md**: Research findings on cascade delete implementation
+
+## Current Status
+
+**Phase Completion**:
+- ✅ Phase 1: Core Transaction Implementation
+- ✅ Phase 2: Backup Infrastructure
+- ✅ Phase 3: Restore UI
+- ✅ Phase 4: Testing & Monitoring
+
+**Production Status**: Deployed and operational
+**Active Development**: Maintenance mode
+**Test Coverage**: Comprehensive test suite with transaction, backup, and E2E tests
+
+## Common Tasks
+
+### Creating New Records
+Use the `max_meas()` macro pattern:
+```python
+# In SQL:
+CREATE MACRO max_meas() AS (SELECT MAX(measure_id) + 1 FROM measure);
+INSERT INTO measure (measure_id, ...) VALUES (max_meas(), ...);
+```
+
+### Deleting Records
+Always respect cascade order (see cascade delete pattern above).
+Snapshots are created automatically before all deletes.
+
+### Updating Records
+Use transactions for atomic updates with relationships:
+```python
+with conn.begin():
+    # Update parent record
+    # Add/remove relationships
+    # All changes are atomic
+```
+
+### Exporting Data
+Navigate to Data Export page in UI, select entity type, and download CSV.
+
+### Creating Backups
+Navigate to Backup & Restore page, add description, create snapshot (local mode only).
+
+### Restoring Data
+Navigate to Backup & Restore page → Snapshots tab, preview, confirm "RESTORE".
+
+## Special Notes
+
+1. **Database Naming**: `grant_table` is used instead of `grants` (SQL reserved keyword)
+2. **Geographic Data**: `area_geom` contains 694 polygon geometries linked to 50 areas
+3. **GBIF Integration**: Species data includes taxonomy IDs and image URLs
+4. **View Consistency**: `source_table_recreated_vw` row count should match original `source_table`
+5. **Cloud Limitations**: Backup functionality disabled on Streamlit Cloud (ephemeral filesystem)
+
+## AI Assistant Instructions
+
+When working with this codebase:
+1. **Use serena MCP** for semantic code retrieval and editing
+2. **Use context7 MCP** for up-to-date documentation on third-party libraries
+3. **Use sequential thinking** for decision making
+4. **Read CLAUDE.md** before starting any work
+5. **Respect the normalized schema** - don't suggest denormalization
+6. **Follow cascade delete order** when implementing delete operations
+7. **Use uv for package management** and `uv run` for execution
+8. **Check DuckDB limitations** before suggesting transaction patterns
+
+## Links & Resources
+
+- **GitHub Repository**: https://github.com/stevecrawshaw/lnrs-db-app
+- **MotherDuck**: https://app.motherduck.com/
+- **Streamlit Cloud**: https://share.streamlit.io/
+- **Schema Artifact**: https://claude.ai/public/artifacts/63e84958-e21f-4fcc-b550-cc0ac63c5a52
+- **GBIF**: https://www.gbif.org/
+- **LNRS Toolkit**: https://opendata.westofengland-ca.gov.uk/pages/lnrs-application/
+
+
