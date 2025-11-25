@@ -19,6 +19,7 @@ This is a Streamlit-based CRUD application for managing the LNRS (Local Nature R
 The database uses a normalized 3NF schema with the following core structure:
 
 ### Core Tables
+
 - **measure**: Actions/recommendations for biodiversity (780+ records)
 - **area**: Priority areas for biodiversity (50 areas, mapped to 694 polygons)
 - **priority**: 33 biodiversity priorities grouped by themes
@@ -28,6 +29,7 @@ The database uses a normalized 3NF schema with the following core structure:
 - **benefits**: Benefits delivered by measures
 
 ### Bridge Tables (Many-to-Many Relationships)
+
 - **measure_has_type**: Links measures to measure types
 - **measure_has_stakeholder**: Links measures to stakeholders
 - **measure_area_priority**: Core relationship between measures, areas, and priorities
@@ -39,12 +41,14 @@ The database uses a normalized 3NF schema with the following core structure:
 - **habitat_management_area**: Links habitats to areas for management
 
 ### Important Views
+
 - **source_table_recreated_vw**: Recreates the original denormalized data by joining all tables
 - **apmg_slim_vw**: Slimmed down view for the app with key fields only
 
 ## Development Commands
 
 ### Setup and Installation
+
 ```bash
 # Install dependencies using uv
 uv sync
@@ -54,6 +58,7 @@ pip install -r pyproject.toml
 ```
 
 ### Running the Application
+
 ```bash
 # Run the Streamlit app (command TBD - check for main app file)
 streamlit run app.py  # or main.py, check actual filename
@@ -64,6 +69,7 @@ streamlit run app.py  # or main.py, check actual filename
 The database is managed through DuckDB CLI or Python API. Schema is defined in `lnrs_3nf_o1.sql`. For additional context, the schema is also represented in the `lnrs_3nf_o1_schema.xml` file.
 
 To recreate the database:
+
 ```bash
 # Remove existing database
 rm data/lnrs_3nf_o1.duckdb
@@ -84,6 +90,7 @@ rm data/lnrs_3nf_o1.duckdb
 When deleting from core tables, you MUST delete from dependent tables first:
 
 **Delete a Measure:**
+
 1. Delete from `measure_has_type` where `measure_id` matches
 2. Delete from `measure_has_stakeholder` where `measure_id` matches
 3. Delete from `measure_area_priority_grant` where `measure_id` matches
@@ -93,12 +100,14 @@ When deleting from core tables, you MUST delete from dependent tables first:
 7. Finally delete from `measure`
 
 **Delete a Priority:**
+
 1. Delete from `measure_area_priority_grant` where `priority_id` matches
 2. Delete from `measure_area_priority` where `priority_id` matches
 3. Delete from `species_area_priority` where `priority_id` matches
 4. Finally delete from `priority`
 
 **Delete an Area:**
+
 1. Delete from `measure_area_priority_grant` where `area_id` matches
 2. Delete from `measure_area_priority` where `area_id` matches
 3. Delete from `species_area_priority` where `area_id` matches
@@ -110,18 +119,21 @@ When deleting from core tables, you MUST delete from dependent tables first:
 ### Creating New Records
 
 When creating measures, use the `max_meas()` macro pattern to generate new IDs:
+
 ```sql
 CREATE MACRO max_meas() AS (SELECT MAX(measure_id) + 1 FROM measure);
 INSERT INTO measure (measure_id, ...) VALUES (max_meas(), ...);
 ```
 
 For `measure_type` and `stakeholder` tables, use sequences:
+
 - `seq_measure_type_id`
 - `seq_stakeholder_id`
 
 ## Data Files Location
 
 Source data files are expected in `data/` directory:
+
 - CSV files use `;` as delimiter (not `,`)
 - Main database: `data/lnrs_3nf_o1.duckdb`
 - Schema: `lnrs_3nf_o1.sql` (root directory)
@@ -144,43 +156,55 @@ Source data files are expected in `data/` directory:
 - The view `source_table_recreated_vw` should have the same row count as the original `source_table`
 
 ## Python Rules
+
 This rule applies to all Python files in the project.
 
 ### File Pattern
+
 *.py
 
 ### Description
+
 When working with Python files, we use uv as our package manager and runtime. Python files should be executed using the command `uv run {file}`.
 
 ### Formatting
+
 - Use 4 spaces for indentation
 - Follow PEP 8 style guide
 - Use Ruff for code formatting and linting
 - Format on save
 
 ### Best Practices
+
 - Use type hints where appropriate
 - Include docstrings for functions and classes
 - Use virtual environments with uv for dependency management
 - Use ipykernel code fences like `#%%` for interactive development and testing
 
 ## SQL Rules
+
 This rule applies to all SQL files in the project.
+
 ### File Pattern
+
 *.sql
 
 ### Description
+
 When working with SQL files, we use DuckDB as our database engine. SQL files should be executed using the command `duckdb local.db -f {file}`.
 
 ### Formatting
+
 - Use 4 spaces for indentation
 - Use SQLFluff for formatting with DuckDB dialect
 - Format on save
 
 ## Commands
+
 - Run SQL file: duckdb local.db -f {file}
 
 ## Best Practices
+
 - Use consistent naming conventions
 - Include comments for complex queries
 - Use proper indentation for readability
