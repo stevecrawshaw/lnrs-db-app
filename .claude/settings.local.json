@@ -23,13 +23,10 @@
       "mcp__serena__search_for_pattern",
       "Bash(uv run pytest:*)",
       "Bash(cat:*)",
-<<<<<<< HEAD
       "Bash(uv run python:*)",
-      "Bash(echo:*)"
-=======
+      "Bash(echo:*)",
       "mcp__faf__faf_about",
       "mcp__faf__faf_init"
->>>>>>> ba034ca3cfbf63287161dee58ca874063eea3152
     ],
     "deny": [],
     "ask": []
