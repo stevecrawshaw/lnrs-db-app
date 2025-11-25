@@ -26,6 +26,8 @@ if "show_edit_form" not in st.session_state:
     st.session_state.show_edit_form = False
 if "show_delete_confirm" not in st.session_state:
     st.session_state.show_delete_confirm = False
+if "delete_success_message" not in st.session_state:
+    st.session_state.delete_success_message = None
 
 
 def show_create_form():
@@ -151,7 +153,8 @@ def show_delete_confirmation(habitat_id: int):
         if st.button("🗑️ Delete Habitat", type="primary", width="stretch"):
             try:
                 habitat_model.delete_with_cascade(habitat_id)
-                st.success(f"✅ Successfully deleted habitat ID {habitat_id}!")
+                # Store success message to show after rerun
+                st.session_state.delete_success_message = f"Successfully deleted habitat ID {habitat_id}!"
                 st.session_state.show_delete_confirm = False
                 st.session_state.habitat_view = "list"
                 st.session_state.selected_habitat_id = None
@@ -163,6 +166,13 @@ def show_delete_confirmation(habitat_id: int):
 def show_list_view():
     """Display list of all habitats."""
     st.title("🌳 Habitats")
+
+    # Show delete success message with restore hint if present
+    if st.session_state.delete_success_message:
+        st.success(f"✅ {st.session_state.delete_success_message}")
+        st.info("💡 **Tip:** If you need to undo this change, visit the **Backup & Restore** page (💾 in the navigation menu).")
+        # Clear the message after displaying
+        st.session_state.delete_success_message = None
 
     # Create button
     if st.button("➕ Create New Habitat", type="primary"):

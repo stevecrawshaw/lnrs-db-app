@@ -10,10 +10,22 @@ import streamlit as st
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from models.area import AreaModel
+from models.grant import GrantModel
+from models.habitat import HabitatModel
+from models.measure import MeasureModel
+from models.priority import PriorityModel
 from models.relationship import RelationshipModel
+from models.species import SpeciesModel
 
-# Initialize model
+# Initialize models
 relationship_model = RelationshipModel()
+area_model = AreaModel()
+priority_model = PriorityModel()
+measure_model = MeasureModel()
+species_model = SpeciesModel()
+grant_model = GrantModel()
+habitat_model = HabitatModel()
 
 # ==============================================================================
 # PAGE CONTENT
@@ -228,6 +240,231 @@ with export_col6:
             mime="text/csv",
             width="stretch",
             key="export_unfunded",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 3: CORE AND SUPPORT TABLE EXPORTS
+# ==============================================================================
+
+st.header("3. Core and Support Table Exports")
+st.markdown(
+    "Export core and support tables containing base entities and reference data."
+)
+
+# Row 1: Core tables (area, priority, measure)
+export_col1, export_col2, export_col3 = st.columns(3)
+
+with export_col1:
+    st.subheader("Area")
+    st.caption("Priority areas for biodiversity")
+    try:
+        area_data = area_model.get_all()
+        st.metric("Records", f"{len(area_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"area_{timestamp}.csv"
+        csv_data = area_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_area",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col2:
+    st.subheader("Priority")
+    st.caption("Biodiversity priorities and themes")
+    try:
+        priority_data = priority_model.get_all()
+        st.metric("Records", f"{len(priority_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"priority_{timestamp}.csv"
+        csv_data = priority_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_priority",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col3:
+    st.subheader("Measure")
+    st.caption("Conservation measures and recommendations")
+    try:
+        measure_data = measure_model.get_all()
+        st.metric("Records", f"{len(measure_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"measure_{timestamp}.csv"
+        csv_data = measure_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_measure",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+st.markdown("")
+
+# Row 2: Core tables continued (species, grants, habitat)
+export_col4, export_col5, export_col6 = st.columns(3)
+
+with export_col4:
+    st.subheader("Species")
+    st.caption("Species of importance with GBIF data")
+    try:
+        species_data = species_model.get_all()
+        st.metric("Records", f"{len(species_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"species_{timestamp}.csv"
+        csv_data = species_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_species_table",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col5:
+    st.subheader("Grant Table")
+    st.caption("Available grants and funding schemes")
+    try:
+        grant_data = grant_model.get_all()
+        st.metric("Records", f"{len(grant_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"grant_table_{timestamp}.csv"
+        csv_data = grant_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_grant_table",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col6:
+    st.subheader("Habitat")
+    st.caption("Habitat types for creation/management")
+    try:
+        habitat_data = habitat_model.get_all()
+        st.metric("Records", f"{len(habitat_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"habitat_{timestamp}.csv"
+        csv_data = habitat_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_habitat",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+st.markdown("")
+
+# Row 3: Support tables (measure_type, benefits, area_funding_schemes)
+export_col7, export_col8, export_col9 = st.columns(3)
+
+with export_col7:
+    st.subheader("Measure Type")
+    st.caption("Classification of measure types")
+    try:
+        measure_type_data = measure_model.get_all_measure_types()
+        st.metric("Records", f"{len(measure_type_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"measure_type_{timestamp}.csv"
+        csv_data = measure_type_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_measure_type",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col8:
+    st.subheader("Benefits")
+    st.caption("Benefits delivered by measures")
+    try:
+        benefits_data = measure_model.get_all_benefits()
+        st.metric("Records", f"{len(benefits_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"benefits_{timestamp}.csv"
+        csv_data = benefits_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_benefits",
+        )
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+with export_col9:
+    st.subheader("Area Funding Schemes")
+    st.caption("Funding schemes per area")
+    try:
+        # Query the area_funding_schemes table directly
+        funding_schemes_data = relationship_model.execute_raw_query(
+            "SELECT * FROM area_funding_schemes ORDER BY id"
+        ).pl()
+        st.metric("Records", f"{len(funding_schemes_data):,}")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        filename = f"area_funding_schemes_{timestamp}.csv"
+        csv_data = funding_schemes_data.write_csv()
+
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv_data,
+            file_name=filename,
+            mime="text/csv",
+            width="stretch",
+            key="export_area_funding_schemes",
         )
     except Exception as e:
         st.error(f"Error: {str(e)}")
